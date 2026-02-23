@@ -1,0 +1,284 @@
+[
+  {
+    "area_id": "hokkaido",
+    "area_name": "北海道",
+    "source_name": "北海道 入札・調達情報",
+    "url": "https://www.pref.hokkaido.lg.jp/category/d003/c006/"
+  },
+  {
+    "area_id": "aomori",
+    "area_name": "青森県",
+    "source_name": "青森県 入札情報",
+    "url": "https://www.pref.aomori.lg.jp/koho/nyusatsu_iriguchi.html"
+  },
+  {
+    "area_id": "iwate",
+    "area_name": "岩手県",
+    "source_name": "岩手県 入札・コンペ・公募情報",
+    "url": "https://www.pref.iwate.jp/kensei/nyuusatsu/index.html"
+  },
+  {
+    "area_id": "miyagi",
+    "area_name": "宮城県",
+    "source_name": "宮城県 入札・調達",
+    "url": "https://www.pref.miyagi.jp/life/8/40/"
+  },
+  {
+    "area_id": "akita",
+    "area_name": "秋田県",
+    "source_name": "秋田県 入札情報",
+    "url": "https://www.pref.akita.lg.jp/pages/genre/14782"
+  },
+  {
+    "area_id": "yamagata",
+    "area_name": "山形県",
+    "source_name": "山形県 入札情報",
+    "url": "https://www.pref.yamagata.jp/kensei/nyuusatsujouhou/nyuusatsujouhou/index.html"
+  },
+  {
+    "area_id": "fukushima",
+    "area_name": "福島県",
+    "source_name": "福島県 入札・調達情報案内",
+    "url": "https://www.pref.fukushima.lg.jp/sec/01115c/nyusatsujoho.html"
+  },
+  {
+    "area_id": "ibaraki",
+    "area_name": "茨城県",
+    "source_name": "茨城県 入札・調達・公売",
+    "url": "https://www.pref.ibaraki.jp/shiru/nyusatsu-chotatsu/index.html"
+  },
+  {
+    "area_id": "tochigi",
+    "area_name": "栃木県",
+    "source_name": "栃木県 入札・公売",
+    "url": "https://www.pref.tochigi.lg.jp/kensei/nyuusatsu/index.html"
+  },
+  {
+    "area_id": "gunma",
+    "area_name": "群馬県",
+    "source_name": "群馬県 入札・公売・公募",
+    "url": "https://www.pref.gunma.jp/site/nyuusatsu/"
+  },
+  {
+    "area_id": "saitama",
+    "area_name": "埼玉県",
+    "source_name": "埼玉県 入札情報",
+    "url": "https://www.pref.saitama.lg.jp/kense/tetsuzuki/nyusatsu/index.html"
+  },
+  {
+    "area_id": "chiba",
+    "area_name": "千葉県",
+    "source_name": "千葉県 入札・契約",
+    "url": "https://www.pref.chiba.lg.jp/nyuu-kei/index.html"
+  },
+  {
+    "area_id": "tokyo",
+    "area_name": "東京都",
+    "source_name": "東京都 契約・入札情報",
+    "url": "https://www.metro.tokyo.lg.jp/tosei/zaise/keiyaku"
+  },
+  {
+    "area_id": "kanagawa",
+    "area_name": "神奈川県",
+    "source_name": "神奈川県 入札・公共工事",
+    "url": "https://www.pref.kanagawa.jp/menu/5/22/index.html"
+  },
+  {
+    "area_id": "niigata",
+    "area_name": "新潟県",
+    "source_name": "新潟県 入札・発注・売却",
+    "url": "https://www.pref.niigata.lg.jp/life/sub/8/"
+  },
+  {
+    "area_id": "toyama",
+    "area_name": "富山県",
+    "source_name": "富山県 入札情報・公共工事",
+    "url": "https://www.pref.toyama.jp/sangyou/nyuusatsu/index.html"
+  },
+  {
+    "area_id": "ishikawa",
+    "area_name": "石川県",
+    "source_name": "石川県 入札情報システム",
+    "url": "https://www.pref.ishikawa.lg.jp/kanri/cals-ec/bidding_information.html"
+  },
+  {
+    "area_id": "fukui",
+    "area_name": "福井県",
+    "source_name": "福井県 入札案件",
+    "url": "https://www.pref.fukui.lg.jp/gyosei/tetuduki/cat4502/index.html"
+  },
+  {
+    "area_id": "yamanashi",
+    "area_name": "山梨県",
+    "source_name": "山梨県 入札・調達",
+    "url": "https://www.pref.yamanashi.jp/nyusatsu_chotatsu/"
+  },
+  {
+    "area_id": "nagano",
+    "area_name": "長野県",
+    "source_name": "長野県 入札・調達",
+    "url": "https://www.pref.nagano.lg.jp/kensei/nyusatsu/index.html"
+  },
+  {
+    "area_id": "gifu",
+    "area_name": "岐阜県",
+    "source_name": "岐阜県 入札・公売",
+    "url": "https://www.pref.gifu.lg.jp/site/bid/"
+  },
+  {
+    "area_id": "shizuoka",
+    "area_name": "静岡県",
+    "source_name": "静岡県 入札・公募・公売",
+    "url": "https://www.pref.shizuoka.jp/kensei/nyusatsukobai/index.html"
+  },
+  {
+    "area_id": "aichi",
+    "area_name": "愛知県",
+    "source_name": "愛知県 入札・契約・公売情報",
+    "url": "https://www.pref.aichi.jp/life/5/19/"
+  },
+  {
+    "area_id": "mie",
+    "area_name": "三重県",
+    "source_name": "三重県 入札・契約",
+    "url": "https://www.pref.mie.lg.jp/common/07/ci400000389.htm"
+  },
+  {
+    "area_id": "shiga",
+    "area_name": "滋賀県",
+    "source_name": "滋賀県 入札・売却・指定管理",
+    "url": "https://www.pref.shiga.lg.jp/zigyousya/nyusatsubaikyaku/"
+  },
+  {
+    "area_id": "kyoto",
+    "area_name": "京都府",
+    "source_name": "京都府 入札情報",
+    "url": "https://www.pref.kyoto.jp/sangyoshigoto/nyusatsu/index.html"
+  },
+  {
+    "area_id": "osaka",
+    "area_name": "大阪府",
+    "source_name": "大阪府 入札公告",
+    "url": "https://www.pref.osaka.lg.jp/shigotosangyou/nyuusatsukeiyaku/nyuusatsu/denshichoutatsu/denshinyuusatsusystem/nyuusatsukoukoku/index.html"
+  },
+  {
+    "area_id": "hyogo",
+    "area_name": "兵庫県",
+    "source_name": "兵庫県 入札・公売情報",
+    "url": "https://web.pref.hyogo.lg.jp/pref/cate3_625.html"
+  },
+  {
+    "area_id": "nara",
+    "area_name": "奈良県",
+    "source_name": "奈良県 入札公告",
+    "url": "https://www.pref.nara.jp/4281.htm"
+  },
+  {
+    "area_id": "wakayama",
+    "area_name": "和歌山県",
+    "source_name": "和歌山県 入札・物品・役務",
+    "url": "https://www.pref.wakayama.lg.jp/whatsnew/nyusatsu.html"
+  },
+  {
+    "area_id": "tottori",
+    "area_name": "鳥取県",
+    "source_name": "鳥取県 調達情報",
+    "url": "https://www.pref.tottori.lg.jp/12470.htm"
+  },
+  {
+    "area_id": "shimane",
+    "area_name": "島根県",
+    "source_name": "島根県 入札情報",
+    "url": "https://www.pref.shimane.lg.jp/bid_info/"
+  },
+  {
+    "area_id": "okayama",
+    "area_name": "岡山県",
+    "source_name": "岡山県 入札・業務委託",
+    "url": "https://www.pref.okayama.jp/site/321/index-2.html"
+  },
+  {
+    "area_id": "hiroshima",
+    "area_name": "広島県",
+    "source_name": "広島県 入札・契約等調達情報",
+    "url": "https://www.pref.hiroshima.lg.jp/site/nyusatsukeiyaku/"
+  },
+  {
+    "area_id": "yamaguchi",
+    "area_name": "山口県",
+    "source_name": "山口県 入札・調達・売却",
+    "url": "https://www.pref.yamaguchi.lg.jp/soshiki/list8-1.html"
+  },
+  {
+    "area_id": "tokushima",
+    "area_name": "徳島県",
+    "source_name": "徳島県 入札・調達・売却",
+    "url": "https://www.pref.tokushima.lg.jp/mokuteki/nyusatsu/"
+  },
+  {
+    "area_id": "kagawa",
+    "area_name": "香川県",
+    "source_name": "香川県 入札情報",
+    "url": "https://www.pref.kagawa.lg.jp/cgi-bin/page/list.php?tpl_type=2&page_type=5"
+  },
+  {
+    "area_id": "ehime",
+    "area_name": "愛媛県",
+    "source_name": "愛媛県 入札情報",
+    "url": "https://www.pref.ehime.jp/site/nyusatsu/"
+  },
+  {
+    "area_id": "kochi",
+    "area_name": "高知県",
+    "source_name": "高知県 入札情報",
+    "url": "https://www.pref.kochi.lg.jp/category/bunya/shigoto_sangyo/nyusatsujoho/"
+  },
+  {
+    "area_id": "fukuoka",
+    "area_name": "福岡県",
+    "source_name": "福岡県 入札・公募",
+    "url": "https://www.pref.fukuoka.lg.jp/bid/"
+  },
+  {
+    "area_id": "saga",
+    "area_name": "佐賀県",
+    "source_name": "佐賀県 入札情報",
+    "url": "https://www.pref.saga.lg.jp/list00632.html"
+  },
+  {
+    "area_id": "nagasaki",
+    "area_name": "長崎県",
+    "source_name": "長崎県 入札公告",
+    "url": "https://www.pref.nagasaki.jp/bunrui/machidukuri/kokyo-jigyo/test-kokyo-jigyo-machidukuri-bunrui/nyusatsukoukoku/"
+  },
+  {
+    "area_id": "kumamoto",
+    "area_name": "熊本県",
+    "source_name": "熊本県 入札情報",
+    "url": "https://www.pref.kumamoto.jp/life/6/34/"
+  },
+  {
+    "area_id": "oita",
+    "area_name": "大分県",
+    "source_name": "大分県 入札情報",
+    "url": "https://www.pref.oita.jp/soshiki/17050/nyusatujoho.html"
+  },
+  {
+    "area_id": "miyazaki",
+    "area_name": "宮崎県",
+    "source_name": "宮崎県 入札情報",
+    "url": "https://www.pref.miyazaki.lg.jp/kense/chotatsu/nyusatsu/index.html"
+  },
+  {
+    "area_id": "kagoshima",
+    "area_name": "鹿児島県",
+    "source_name": "鹿児島県 入札情報",
+    "url": "https://www.pref.kagoshima.jp/kensei/nyusatu/nyusatujoho/index.html"
+  },
+  {
+    "area_id": "okinawa",
+    "area_name": "沖縄県",
+    "source_name": "沖縄県 公募・入札発注情報",
+    "url": "https://www.pref.okinawa.jp/shigoto/nyusatsukeiyaku/1015342/index.html"
+  }
+]
