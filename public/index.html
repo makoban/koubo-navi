@@ -18,7 +18,7 @@
       <div class="header__logo">
         <span class="header__icon">&#x1f4cb;</span>
         <span class="header__title">公募ナビAI</span>
-        <div class="header__badge">v1.0</div>
+        <div class="header__badge">v2.0</div>
       </div>
       <div class="header__actions" id="authArea">
         <button class="btn btn--outline btn--sm" id="loginBtn" onclick="showLoginModal()">ログイン</button>
@@ -41,14 +41,14 @@
           AIが毎日、自動で見つける。
         </h1>
         <p class="hero__subtitle">
-          会社のURLを入力するだけ。AIが事業内容を読み取り、<br>
+          会社のURLか事業内容を入力するだけ。AIが事業内容を読み取り、<br>
           全国の行政案件から最適な公募・入札情報を毎朝メールでお届けします。
         </p>
         <div class="hero__actions">
-          <button class="btn btn--primary btn--lg" onclick="startOnboarding()">無料で始める（14日間）</button>
+          <button class="btn btn--primary btn--lg" onclick="startOnboarding()">無料で始める（7日間）</button>
           <a href="#service-sample" class="btn btn--outline btn--lg">サンプルを見る</a>
         </div>
-        <p class="hero__note">クレジットカード不要 / 3分で登録完了</p>
+        <p class="hero__note">7日間無料・途中解約可 / 3分で登録完了</p>
       </div>
     </section>
 
@@ -147,14 +147,14 @@
     <!-- 3 Steps -->
     <section class="steps">
       <h2 class="section-title">ご利用の流れ</h2>
-      <p class="section-desc">会社URLを入力するだけ。複雑な設定は一切不要です。</p>
+      <p class="section-desc">URLまたは事業内容を入力するだけ。複雑な設定は一切不要です。</p>
       <div class="section-divider"></div>
       <div class="steps__grid">
         <div class="step-card">
           <div class="step-card__number">1</div>
           <div class="step-card__icon">&#x1F310;</div>
-          <h3>会社URLを入力</h3>
-          <p>自社ウェブサイトのURLを入力するだけ。キーワードや業種の手動設定は不要です。</p>
+          <h3>事業内容を入力</h3>
+          <p>自社ウェブサイトのURLまたは事業内容テキストを入力。キーワードや業種の手動設定は不要です。</p>
         </div>
         <div class="step-card">
           <div class="step-card__number">2</div>
@@ -166,7 +166,7 @@
           <div class="step-card__number">3</div>
           <div class="step-card__icon">&#x1F4E9;</div>
           <h3>毎朝メールで通知</h3>
-          <p>マッチする案件が見つかったら毎朝8時にメールで通知。朝のメールを確認するだけです。</p>
+          <p>マッチする案件が見つかったら毎朝8時にメールで通知。気になる案件はワンクリックでAI詳細分析レポートを確認できます。</p>
         </div>
       </div>
     </section>
@@ -191,7 +191,7 @@
         <div class="comparison__card comparison__card--after">
           <h3>公募ナビAI</h3>
           <ul>
-            <li>URLを一度登録するだけで完了</li>
+            <li>URLか事業内容を一度入力するだけで完了</li>
             <li>AIがマッチ度をスコアで自動判定</li>
             <li>全案件を漏れなく毎日チェック</li>
             <li>朝のメールを確認するだけ</li>
@@ -244,7 +244,7 @@
               <td><span class="competitor__cross">&#x2716;</span></td>
             </tr>
             <tr>
-              <td class="competitor__label">URL入力だけで開始</td>
+              <td class="competitor__label">URLかテキストで即開始</td>
               <td class="competitor__self"><span class="competitor__check">&#x2714;</span></td>
               <td><span class="competitor__cross">&#x2716;</span></td>
               <td><span class="competitor__cross">&#x2716;</span></td>
@@ -261,7 +261,7 @@
             </tr>
             <tr>
               <td class="competitor__label">無料トライアル</td>
-              <td class="competitor__self"><strong>14日間</strong></td>
+              <td class="competitor__self"><strong>7日間</strong></td>
               <td>8日間</td>
               <td>月末まで</td>
               <td>10日間</td>
@@ -280,6 +280,14 @@
               <td class="competitor__self"><span class="competitor__check">&#x2714;</span></td>
               <td><span class="competitor__cross">&#x2716;</span></td>
               <td>3段階評価</td>
+              <td><span class="competitor__cross">&#x2716;</span></td>
+              <td><span class="competitor__cross">&#x2716;</span></td>
+            </tr>
+            <tr>
+              <td class="competitor__label">AI詳細分析</td>
+              <td class="competitor__self"><span class="competitor__check">&#x2714;</span></td>
+              <td><span class="competitor__cross">&#x2716;</span></td>
+              <td><span class="competitor__cross">&#x2716;</span></td>
               <td><span class="competitor__cross">&#x2716;</span></td>
               <td><span class="competitor__cross">&#x2716;</span></td>
             </tr>
@@ -329,11 +337,11 @@
           <h3>月額プラン</h3>
           <div class="pricing__price"><span class="pricing__yen">&#165;</span>2,980<span class="pricing__period">/月</span></div>
           <ul class="pricing__features">
-            <li>14日間無料トライアル</li>
+            <li>7日間無料トライアル</li>
             <li>全国47都道府県対応</li>
-            <li>毎日自動チェック</li>
-            <li>メール通知</li>
-            <li>マッチングスコア表示</li>
+            <li>毎日自動チェック + メール通知</li>
+            <li>最大100件のランキング表示</li>
+            <li>AI詳細分析レポート</li>
             <li>いつでも解約可能</li>
           </ul>
           <button class="btn btn--primary btn--lg" onclick="startOnboarding()">無料で始める</button>
@@ -343,11 +351,11 @@
           <h3>年額プラン</h3>
           <div class="pricing__price"><span class="pricing__yen">&#165;</span>29,800<span class="pricing__period">/年</span></div>
           <ul class="pricing__features">
-            <li>14日間無料トライアル</li>
+            <li>7日間無料トライアル</li>
             <li>月額換算 &#165;2,483</li>
             <li>全機能利用可能</li>
-            <li>メール通知</li>
-            <li>マッチングスコア表示</li>
+            <li>最大100件のランキング表示</li>
+            <li>AI詳細分析レポート</li>
             <li>いつでも解約可能</li>
           </ul>
           <button class="btn btn--outline btn--lg" onclick="startOnboarding('yearly')">年額で始める</button>
@@ -366,7 +374,7 @@
         </details>
         <details class="faq__item">
           <summary>自分で行政サイトを巡回しなくていいのですか？</summary>
-          <p>はい。会社URLを登録するだけで、AIが毎日自動で複数の行政サイトをチェックし、マッチする案件をスコア付きでメールでお届けします。</p>
+          <p>はい。会社URLか事業内容を登録するだけで、AIが毎日自動で複数の行政サイトをチェックし、マッチする案件をスコア付きでメールでお届けします。</p>
         </details>
         <details class="faq__item">
           <summary>AIの精度はどのくらいですか？</summary>
@@ -374,19 +382,23 @@
         </details>
         <details class="faq__item">
           <summary>無料トライアル中に課金されますか？</summary>
-          <p>いいえ。14日間は完全無料です。トライアル終了の3日前にメールでお知らせしますので、継続しない場合はその前に解約してください。</p>
+          <p>いいえ。7日間は完全無料です。トライアル終了の3日前にメールでお知らせしますので、継続しない場合はその前に解約してください。</p>
         </details>
         <details class="faq__item">
           <summary>解約はいつでもできますか？</summary>
           <p>はい。マイページからいつでも解約できます。解約後も契約期間の終了まではサービスをご利用いただけます。</p>
+        </details>
+        <details class="faq__item">
+          <summary>無料トライアル中の制限はありますか？</summary>
+          <p>トライアル中は有料会員と同じ全機能をご利用いただけます。最大100件のランキング表示、AI詳細分析レポートも含まれます。トライアル終了後、未課金の場合はランキングがTOP10に制限されます。</p>
         </details>
       </div>
     </section>
 
     <!-- CTA -->
     <section class="cta">
-      <h2>まずは14日間、無料でお試しください</h2>
-      <p>会社URLを入力するだけ。設定は3分で完了します。</p>
+      <h2>まずは7日間、無料でお試しください</h2>
+      <p>URLか事業内容を入力するだけ。設定は3分で完了します。</p>
       <button class="btn btn--primary btn--lg" onclick="startOnboarding()">無料で始める</button>
     </section>
   </main>
@@ -399,52 +411,101 @@
       <div class="onboarding__progress">
         <div class="onboarding__step active" data-step="1">
           <span class="onboarding__step-num">1</span>
-          <span>会社URL</span>
+          <span>事業内容</span>
         </div>
         <div class="onboarding__step" data-step="2">
           <span class="onboarding__step-num">2</span>
-          <span>AI分析確認</span>
+          <span>エリア選択</span>
         </div>
         <div class="onboarding__step" data-step="3">
           <span class="onboarding__step-num">3</span>
-          <span>エリア選択</span>
+          <span>お支払い</span>
         </div>
       </div>
 
-      <!-- Step 1: Company URL -->
+      <!-- Step 1: Business Input + AI Analysis + Profile Confirm -->
       <div class="onboarding__panel" id="obStep1">
-        <h2>会社のウェブサイトURLを入力してください</h2>
-        <p>AIがサイトを読み取り、事業内容を自動で分析します。</p>
-        <div class="input-group">
+        <h2>事業内容を入力してください</h2>
+        <p>AIが事業内容を読み取り、マッチングに必要な情報を自動で分析します。</p>
+
+        <!-- Input Mode Tabs -->
+        <div class="input-mode-tabs">
+          <button class="input-mode-tab active" id="tabUrl" onclick="switchInputMode('url')">URLで入力</button>
+          <button class="input-mode-tab" id="tabText" onclick="switchInputMode('text')">テキストで入力</button>
+        </div>
+
+        <!-- URL Input -->
+        <div class="input-group" id="urlInputGroup">
           <input type="url" id="companyUrlInput" placeholder="https://example.co.jp" class="input input--lg">
           <button class="btn btn--primary btn--lg" id="analyzeBtn" onclick="analyzeCompany()">AIで分析する</button>
         </div>
+
+        <!-- Text Input -->
+        <div class="input-group hidden" id="textInputGroup">
+          <textarea id="companyTextInput" class="input input--lg input--textarea" rows="6" placeholder="事業内容、提供サービス、強み、保有資格などを自由に記述してください（50文字以上）"></textarea>
+          <button class="btn btn--primary btn--lg" id="analyzeBtnText" onclick="analyzeCompany()">AIで分析する</button>
+        </div>
+
         <div id="analyzeStatus" class="status-msg hidden"></div>
+
+        <!-- Profile Card (shown after AI analysis) -->
+        <div id="profileSection" class="hidden">
+          <h3 style="margin-top:24px;">AI分析結果（編集可能）</h3>
+          <div class="profile-card" id="profileCard"></div>
+          <div class="onboarding__actions">
+            <button class="btn btn--primary" onclick="confirmProfileAndNext()">確認して次へ：エリア選択</button>
+          </div>
+        </div>
       </div>
 
-      <!-- Step 2: Confirm Profile -->
+      <!-- Step 2: Area Selection -->
       <div class="onboarding__panel hidden" id="obStep2">
-        <h2>AI分析結果を確認してください</h2>
-        <p>内容を修正することもできます。</p>
-        <div class="profile-card" id="profileCard">
-          <!-- JS で動的に描画 -->
-        </div>
-        <div class="onboarding__actions">
-          <button class="btn btn--outline" onclick="goOnboardingStep(1)">戻る</button>
-          <button class="btn btn--primary" onclick="goOnboardingStep(3)">次へ：エリア選択</button>
-        </div>
-      </div>
-
-      <!-- Step 3: Area Selection -->
-      <div class="onboarding__panel hidden" id="obStep3">
         <h2>チェックしたいエリアを選択してください</h2>
         <p>選択したエリアの公募・入札情報を毎日自動でチェックします。</p>
+        <div class="area-selector-controls">
+          <button class="btn btn--outline btn--sm" onclick="selectAllAreas()">全選択</button>
+          <button class="btn btn--outline btn--sm" onclick="deselectAllAreas()">全解除</button>
+        </div>
         <div class="area-selector" id="areaSelector">
           <!-- JS で動的に描画 -->
         </div>
         <div class="onboarding__actions">
+          <button class="btn btn--outline" onclick="goOnboardingStep(1)">戻る</button>
+          <button class="btn btn--primary" onclick="registerAndGoToPayment()">次へ：お支払い</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Payment -->
+      <div class="onboarding__panel hidden" id="obStep3">
+        <h2>プランを選択してトライアルを開始</h2>
+
+        <div class="trial-info">
+          <div class="trial-info__highlight">7日間無料でお試しいただけます</div>
+          <p>トライアル期間中はクレジットカードの請求は発生しません。</p>
+          <p>トライアル終了後、選択したプランの自動課金が開始されます。</p>
+          <p class="trial-info__note">途中解約はいつでも可能です。解約はマイページからワンクリックで完了します。</p>
+        </div>
+
+        <div class="plan-selector">
+          <label class="plan-option" onclick="selectPlan('monthly')">
+            <input type="radio" name="plan" value="monthly" checked>
+            <div class="plan-option__body">
+              <h4>月額プラン</h4>
+              <div class="plan-option__price">&#165;2,980<span>/月</span></div>
+            </div>
+          </label>
+          <label class="plan-option" onclick="selectPlan('yearly')">
+            <input type="radio" name="plan" value="yearly">
+            <div class="plan-option__body">
+              <h4>年額プラン <span class="plan-option__badge">2ヶ月お得</span></h4>
+              <div class="plan-option__price">&#165;29,800<span>/年（月額換算&#165;2,483）</span></div>
+            </div>
+          </label>
+        </div>
+
+        <div class="onboarding__actions">
           <button class="btn btn--outline" onclick="goOnboardingStep(2)">戻る</button>
-          <button class="btn btn--primary btn--lg" id="completeOnboardingBtn" onclick="completeOnboarding()">登録を完了する</button>
+          <button class="btn btn--primary btn--lg" id="startTrialBtn" onclick="startTrialCheckout()">トライアルを開始する</button>
         </div>
       </div>
     </div>
@@ -559,7 +620,7 @@
   <!-- Footer -->
   <footer class="footer">
     <div class="footer__inner">
-      <p>公募ナビAI v1.0 &mdash; &copy; 2026 <a href="https://bantex.jp" target="_blank">bantex</a></p>
+      <p>公募ナビAI v2.0 &mdash; &copy; 2026 <a href="https://bantex.jp" target="_blank">bantex</a></p>
       <div class="footer__links">
         <a href="https://bantex.jp/terms.html" target="_blank">利用規約</a>
         <a href="https://bantex.jp/privacy.html" target="_blank">プライバシーポリシー</a>

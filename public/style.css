@@ -861,6 +861,151 @@ body {
   margin-top: 32px;
 }
 
+/* Input Mode Tabs */
+.input-mode-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--border);
+}
+.input-mode-tab {
+  flex: 1;
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+}
+.input-mode-tab:hover { color: var(--text-primary); }
+.input-mode-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.input--textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 120px;
+  font-family: var(--font-body);
+  line-height: 1.6;
+}
+
+/* Trial Info */
+.trial-info {
+  background: var(--accent-light);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.trial-info__highlight {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+.trial-info p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.trial-info__note {
+  color: var(--success) !important;
+  font-weight: 500;
+}
+
+/* Plan Selector */
+.plan-selector {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.plan-option {
+  flex: 1;
+  cursor: pointer;
+  display: block;
+}
+.plan-option input[type="radio"] { display: none; }
+.plan-option__body {
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  transition: all 0.2s;
+}
+.plan-option input:checked + .plan-option__body {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+.plan-option__body h4 {
+  font-size: 16px;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+.plan-option__price {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.plan-option__price span {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.plan-option__badge {
+  background: var(--accent);
+  color: var(--bg-primary);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* Area Selector Controls */
+.area-selector-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* Area Region Groups */
+.area-region-group {
+  margin-bottom: 16px;
+}
+.area-region-group__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-gold);
+}
+.area-region-group__items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+/* Profile Edit Inputs */
+.profile-edit {
+  flex: 1;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 6px 10px;
+  font-size: 14px;
+  border-radius: var(--radius-sm);
+}
+.profile-edit:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
 /* Profile Card */
 .profile-card {
   background: var(--bg-card);
@@ -991,7 +1136,127 @@ body {
 .opp-card__title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
 .opp-card__meta { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
 .opp-card__reason { font-size: 13px; color: var(--text-secondary); }
-.opp-card__actions { display: flex; gap: 8px; margin-top: 8px; }
+.opp-card__actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+
+/* Rank Badge */
+.opp-card__rank {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--accent);
+  min-width: 42px;
+  text-align: center;
+  line-height: 1;
+}
+.opp-card__rank:nth-child(1) { color: #ffd700; }
+
+/* Analysis Panel */
+.opp-card__analysis {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.analysis-loading {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-muted);
+}
+.analysis-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.analysis-panel__summary {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.8;
+}
+.analysis-panel__section h4 {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.analysis-panel__section ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.analysis-panel__section ul li {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  padding-left: 20px;
+  position: relative;
+}
+.analysis-panel__section--match h4 { color: var(--success); }
+.analysis-panel__section--match ul li::before {
+  content: '\2714';
+  position: absolute;
+  left: 0;
+  color: var(--success);
+  font-size: 11px;
+}
+.analysis-panel__section--concern h4 { color: var(--warning); }
+.analysis-panel__section--concern ul li::before {
+  content: '\26A0';
+  position: absolute;
+  left: 0;
+  color: var(--warning);
+  font-size: 11px;
+}
+.analysis-panel__section--action h4 { color: var(--accent); }
+.analysis-panel__section--action ul li {
+  padding-left: 24px;
+  counter-increment: action-counter;
+}
+.analysis-panel__section--action ul li::before {
+  content: counter(action-counter) '.';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 12px;
+}
+.analysis-panel__section--action ul {
+  counter-reset: action-counter;
+}
+.analysis-panel__meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.analysis-badge {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.analysis-badge--difficulty-high { background: rgba(248, 113, 113, 0.12); color: var(--danger); }
+.analysis-badge--difficulty-mid { background: var(--accent-light); color: var(--accent); }
+.analysis-badge--difficulty-low { background: rgba(74, 222, 128, 0.12); color: var(--success); }
+.analysis-badge--days { background: var(--bg-secondary); color: var(--text-secondary); }
+
+/* Upgrade CTA */
+.upgrade-cta {
+  background: var(--accent-light);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius);
+  padding: 28px;
+  text-align: center;
+  margin-top: 12px;
+}
+.upgrade-cta p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.upgrade-cta p strong { color: var(--accent); }
+.upgrade-cta .btn { margin-top: 12px; }
 
 .empty-state {
   text-align: center;

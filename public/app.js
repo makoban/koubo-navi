@@ -1,4 +1,4 @@
-// 公募ナビAI v1.0
+// 公募ナビAI v2.0
 // LP + Onboarding + Dashboard
 
 // ---------------------------------------------------------------------------
@@ -19,6 +19,7 @@ let currentUser = null;
 let companyProfile = null;
 let selectedPlan = "monthly";
 let authMode = "login"; // login | signup
+let inputMode = "url"; // url | text
 
 // ---------------------------------------------------------------------------
 // Init
@@ -252,19 +253,51 @@ function goOnboardingStep(step) {
   });
 }
 
-async function analyzeCompany() {
-  const urlInput = document.getElementById("companyUrlInput");
-  const btn = document.getElementById("analyzeBtn");
-  const status = document.getElementById("analyzeStatus");
-  let url = urlInput.value.trim();
+function switchInputMode(mode) {
+  inputMode = mode;
+  const urlGroup = document.getElementById("urlInputGroup");
+  const textGroup = document.getElementById("textInputGroup");
+  const tabUrl = document.getElementById("tabUrl");
+  const tabText = document.getElementById("tabText");
 
-  if (!url) { alert("URLを入力してください"); return; }
-  if (!url.startsWith("http")) url = "https://" + url;
+  if (mode === "url") {
+    urlGroup.classList.remove("hidden");
+    textGroup.classList.add("hidden");
+    tabUrl.classList.add("active");
+    tabText.classList.remove("active");
+  } else {
+    urlGroup.classList.add("hidden");
+    textGroup.classList.remove("hidden");
+    tabUrl.classList.remove("active");
+    tabText.classList.add("active");
+  }
+}
+
+async function analyzeCompany() {
+  const status = document.getElementById("analyzeStatus");
+  let requestBody;
+  let btn;
+
+  if (inputMode === "url") {
+    btn = document.getElementById("analyzeBtn");
+    let url = document.getElementById("companyUrlInput").value.trim();
+    if (!url) { alert("URLを入力してください"); return; }
+    if (!url.startsWith("http")) url = "https://" + url;
+    requestBody = { url };
+  } else {
+    btn = document.getElementById("analyzeBtnText");
+    const text = document.getElementById("companyTextInput").value.trim();
+    if (!text || text.length < 50) { alert("事業内容を50文字以上入力してください"); return; }
+    requestBody = { text };
+  }
 
   btn.disabled = true;
   btn.textContent = "分析中...";
-  status.textContent = "AIがウェブサイトを読み取っています...（10〜30秒）";
+  status.textContent = inputMode === "url"
+    ? "AIがウェブサイトを読み取っています...（10〜30秒）"
+    : "AIが事業内容を分析しています...（10〜20秒）";
   status.classList.remove("hidden");
+  status.style.color = "";
 
   try {
     const token = await getAccessToken();
@@ -274,7 +307,7 @@ async function analyzeCompany() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!resp.ok) {
@@ -284,7 +317,8 @@ async function analyzeCompany() {
 
     companyProfile = await resp.json();
     renderProfileCard();
-    goOnboardingStep(2);
+    // Show profile section in the same step
+    document.getElementById("profileSection").classList.remove("hidden");
     status.classList.add("hidden");
   } catch (err) {
     status.textContent = `エラー: ${err.message}`;
@@ -295,6 +329,13 @@ async function analyzeCompany() {
   }
 }
 
+function confirmProfileAndNext() {
+  // Collect edited profile values
+  companyProfile = getEditedProfile();
+  goOnboardingStep(2);
+  loadAreas();
+}
+
 function renderProfileCard() {
   if (!companyProfile) return;
   const card = document.getElementById("profileCard");
@@ -302,51 +343,84 @@ function renderProfileCard() {
   card.innerHTML = `
     <div class="profile-card__row">
       <span class="profile-card__label">会社名</span>
-      <span class="profile-card__value">${escapeHtml(p.company_name || "不明")}</span>
+      <input class="input input--sm profile-edit" id="editCompanyName" value="${escapeHtml(p.company_name || "")}">
     </div>
     <div class="profile-card__row">
       <span class="profile-card__label">所在地</span>
-      <span class="profile-card__value">${escapeHtml(p.location || "不明")}</span>
+      <input class="input input--sm profile-edit" id="editLocation" value="${escapeHtml(p.location || "")}">
     </div>
     <div class="profile-card__row">
       <span class="profile-card__label">事業分野</span>
-      <span class="profile-card__value">${escapeHtml((p.business_areas || []).join("、"))}</span>
+      <input class="input input--sm profile-edit" id="editBusinessAreas" value="${escapeHtml((p.business_areas || []).join("、"))}">
     </div>
     <div class="profile-card__row">
       <span class="profile-card__label">提供サービス</span>
-      <span class="profile-card__value">${escapeHtml((p.services || []).join("、"))}</span>
+      <input class="input input--sm profile-edit" id="editServices" value="${escapeHtml((p.services || []).join("、"))}">
     </div>
     <div class="profile-card__row">
       <span class="profile-card__label">強み</span>
-      <span class="profile-card__value">${escapeHtml((p.strengths || []).join("、"))}</span>
+      <input class="input input--sm profile-edit" id="editStrengths" value="${escapeHtml((p.strengths || []).join("、"))}">
     </div>
     <div class="profile-card__row">
       <span class="profile-card__label">マッチングKW</span>
-      <span class="profile-card__value">
-        <div class="keyword-tags">
-          ${(p.matching_keywords || []).map(kw => `<span class="keyword-tag">${escapeHtml(kw)}</span>`).join("")}
-        </div>
-      </span>
+      <input class="input input--sm profile-edit" id="editKeywords" value="${escapeHtml((p.matching_keywords || []).join("、"))}" placeholder="カンマ区切りで入力">
     </div>
   `;
 }
+
+function getEditedProfile() {
+  const splitJa = (val) => val.split(/[、,]/).map(s => s.trim()).filter(Boolean);
+  return {
+    ...companyProfile,
+    company_name: document.getElementById("editCompanyName")?.value.trim() || companyProfile.company_name,
+    location: document.getElementById("editLocation")?.value.trim() || companyProfile.location,
+    business_areas: splitJa(document.getElementById("editBusinessAreas")?.value || ""),
+    services: splitJa(document.getElementById("editServices")?.value || ""),
+    strengths: splitJa(document.getElementById("editStrengths")?.value || ""),
+    matching_keywords: splitJa(document.getElementById("editKeywords")?.value || ""),
+  };
+}
+
+const REGION_MAP = {
+  "北海道・東北": ["hokkaido","aomori","iwate","miyagi","akita","yamagata","fukushima"],
+  "関東": ["ibaraki","tochigi","gunma","saitama","chiba","tokyo","kanagawa"],
+  "中部": ["niigata","toyama","ishikawa","fukui","yamanashi","nagano","gifu","shizuoka","aichi","mie"],
+  "近畿": ["shiga","kyoto","osaka","hyogo","nara","wakayama"],
+  "中国": ["tottori","shimane","okayama","hiroshima","yamaguchi"],
+  "四国": ["tokushima","kagawa","ehime","kochi"],
+  "九州・沖縄": ["fukuoka","saga","nagasaki","kumamoto","oita","miyazaki","kagoshima","okinawa"],
+};
 
 async function loadAreas() {
   try {
     const resp = await fetch(`${WORKER_BASE}/api/areas`);
     const data = await resp.json();
+    const areas = data.areas || [];
+    const areaMap = {};
+    areas.forEach(a => { areaMap[a.area_id] = a; });
+
     const container = document.getElementById("areaSelector");
-    container.innerHTML = (data.areas || []).map(area => `
-      <label class="area-checkbox" onclick="toggleAreaCheckbox(this)">
-        <input type="checkbox" value="${escapeHtml(area.area_id)}" checked>
-        <div class="area-checkbox__info">
-          <h4>${escapeHtml(area.area_name)}</h4>
-          <p>${area.sources.length} データソース</p>
-        </div>
-      </label>
-    `).join("");
-    // Mark as checked
-    container.querySelectorAll(".area-checkbox").forEach(el => el.classList.add("checked"));
+    let html = "";
+
+    for (const [regionName, areaIds] of Object.entries(REGION_MAP)) {
+      const regionAreas = areaIds.filter(id => areaMap[id]);
+      if (regionAreas.length === 0) continue;
+      html += `<div class="area-region-group">
+        <div class="area-region-group__title">${escapeHtml(regionName)}</div>
+        <div class="area-region-group__items">`;
+      for (const areaId of regionAreas) {
+        const area = areaMap[areaId];
+        html += `<label class="area-checkbox" onclick="toggleAreaCheckbox(this)">
+          <input type="checkbox" value="${escapeHtml(area.area_id)}">
+          <div class="area-checkbox__info">
+            <h4>${escapeHtml(area.area_name)}</h4>
+          </div>
+        </label>`;
+      }
+      html += `</div></div>`;
+    }
+
+    container.innerHTML = html;
   } catch {
     document.getElementById("areaSelector").innerHTML = "<p>エリア情報の取得に失敗しました。</p>";
   }
@@ -358,38 +432,68 @@ function toggleAreaCheckbox(el) {
   el.classList.toggle("checked", cb.checked);
 }
 
-async function completeOnboarding() {
-  const btn = document.getElementById("completeOnboardingBtn");
-  btn.disabled = true;
-  btn.textContent = "登録中...";
+function selectPlan(plan) {
+  selectedPlan = plan;
+}
 
+function selectAllAreas() {
+  document.querySelectorAll("#areaSelector input[type=checkbox]").forEach(cb => {
+    cb.checked = true;
+    cb.closest(".area-checkbox")?.classList.add("checked");
+  });
+}
+
+function deselectAllAreas() {
+  document.querySelectorAll("#areaSelector input[type=checkbox]").forEach(cb => {
+    cb.checked = false;
+    cb.closest(".area-checkbox")?.classList.remove("checked");
+  });
+}
+
+async function registerAndGoToPayment() {
   const areaIds = Array.from(document.querySelectorAll("#areaSelector input:checked"))
     .map(cb => cb.value);
 
   if (areaIds.length === 0) {
     alert("少なくとも1つのエリアを選択してください");
-    btn.disabled = false;
-    btn.textContent = "登録を完了する";
     return;
   }
 
   try {
     const token = await getAccessToken();
-    const companyUrl = document.getElementById("companyUrlInput").value.trim();
+    const companyUrl = document.getElementById("companyUrlInput")?.value.trim() || "";
+    const companyText = document.getElementById("companyTextInput")?.value.trim() || "";
 
-    // Register user
+    // Register user + save profile + areas
     const resp = await fetch(`${WORKER_BASE}/api/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ company_url: companyUrl, area_ids: areaIds }),
+      body: JSON.stringify({
+        company_url: companyUrl || undefined,
+        company_text: companyText || undefined,
+        area_ids: areaIds,
+        profile: companyProfile,
+      }),
     });
 
     if (!resp.ok) throw new Error("登録に失敗しました");
 
-    // Start Stripe Checkout for subscription
+    goOnboardingStep(3);
+  } catch (err) {
+    alert(`エラー: ${err.message}`);
+  }
+}
+
+async function startTrialCheckout() {
+  const btn = document.getElementById("startTrialBtn");
+  btn.disabled = true;
+  btn.textContent = "処理中...";
+
+  try {
+    const token = await getAccessToken();
     const checkoutResp = await fetch(`${WORKER_BASE}/api/checkout`, {
       method: "POST",
       headers: {
@@ -413,13 +517,63 @@ async function completeOnboarding() {
   } catch (err) {
     alert(`エラー: ${err.message}`);
     btn.disabled = false;
-    btn.textContent = "登録を完了する";
+    btn.textContent = "トライアルを開始する";
   }
 }
 
 async function verifyCheckout(sessionId) {
-  // After returning from Stripe, show dashboard
+  // After returning from Stripe, show dashboard and trigger initial screening
   showPage("dashboard");
+
+  try {
+    const token = await getAccessToken();
+    if (!token) return;
+
+    // 初期スクリーニングを起動
+    const screenResp = await fetch(`${WORKER_BASE}/api/user/screen`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const screenData = await screenResp.json();
+
+    if (screenData.status === "screening_started") {
+      // スクリーニング進捗を表示
+      const list = document.getElementById("opportunityList");
+      list.innerHTML = `
+        <div class="empty-state" id="screeningProgress">
+          <p style="font-size:24px;">&#x1F50D;</p>
+          <p style="color:var(--accent);font-weight:600;">AIが過去30日分の案件をスクリーニング中...</p>
+          <p>しばらくお待ちください。案件が見つかり次第表示されます。</p>
+        </div>
+      `;
+
+      // 5秒間隔でポーリング（最大12回 = 60秒）
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        try {
+          const resp = await fetch(`${WORKER_BASE}/api/user/opportunities?limit=1`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await resp.json();
+          if ((data.opportunities || []).length > 0 || attempts >= 12) {
+            clearInterval(poll);
+            loadOpportunities();
+          }
+        } catch {
+          if (attempts >= 12) {
+            clearInterval(poll);
+            loadOpportunities();
+          }
+        }
+      }, 5000);
+    }
+  } catch {
+    // スクリーニングに失敗してもダッシュボードは表示
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -469,6 +623,9 @@ async function loadDashboard() {
   }
 }
 
+let currentTier = "free";
+let totalUnfiltered = 0;
+
 async function loadOpportunities() {
   const token = await getAccessToken();
   const scoreMin = document.getElementById("filterScore").value;
@@ -482,6 +639,8 @@ async function loadOpportunities() {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await resp.json();
+    currentTier = data.tier || "free";
+    totalUnfiltered = data.total_unfiltered || 0;
     renderOpportunities(data.opportunities || []);
   } catch {
     renderOpportunities([]);
@@ -503,14 +662,17 @@ function renderOpportunities(items) {
     return;
   }
 
-  list.innerHTML = items.map(item => {
+  let html = items.map((item, idx) => {
     const opp = item.opportunities || {};
     const score = item.match_score;
     const scoreClass = score >= 80 ? "high" : score >= 60 ? "mid" : "low";
     const rec = item.recommendation || "";
+    const rank = item.rank_position || (idx + 1);
+    const oppId = item.opportunity_id || opp.id || "";
 
     return `
-      <div class="opp-card">
+      <div class="opp-card" id="opp-${escapeHtml(oppId)}">
+        <div class="opp-card__rank">#${rank}</div>
         <div class="opp-card__score opp-card__score--${scoreClass}">${score}%</div>
         <div class="opp-card__body">
           <div class="opp-card__title">${escapeHtml(opp.title || item.title || "不明")}</div>
@@ -521,12 +683,102 @@ function renderOpportunities(items) {
           <div class="opp-card__reason">${escapeHtml(item.match_reason || "")}</div>
           <div class="opp-card__actions">
             ${opp.detail_url ? `<a href="${escapeHtml(opp.detail_url)}" target="_blank" class="btn btn--outline btn--sm">詳細を見る</a>` : ""}
+            <button class="btn btn--primary btn--sm" onclick="analyzeOpportunity('${escapeHtml(oppId)}')">AI詳細分析</button>
             <span class="keyword-tag">${escapeHtml(rec)}</span>
           </div>
+          <div class="opp-card__analysis hidden" id="analysis-${escapeHtml(oppId)}"></div>
         </div>
       </div>
     `;
   }).join("");
+
+  // Upgrade CTA for free tier
+  if (currentTier === "free" && totalUnfiltered > items.length) {
+    html += `
+      <div class="upgrade-cta">
+        <p>残り <strong>${totalUnfiltered - items.length}件</strong> の案件があります</p>
+        <p>有料プランにアップグレードすると最大100件まで確認できます</p>
+        <button class="btn btn--primary" onclick="switchTab('subscription')">プランをアップグレード</button>
+      </div>
+    `;
+  }
+
+  list.innerHTML = html;
+}
+
+// ---------------------------------------------------------------------------
+// AI Detailed Analysis
+// ---------------------------------------------------------------------------
+
+async function analyzeOpportunity(oppId) {
+  const panel = document.getElementById(`analysis-${oppId}`);
+  if (!panel) return;
+
+  // トグル: 既に表示済みなら閉じる
+  if (!panel.classList.contains("hidden") && panel.querySelector(".analysis-panel")) {
+    panel.classList.add("hidden");
+    return;
+  }
+
+  // ローディング表示
+  panel.classList.remove("hidden");
+  panel.innerHTML = `<div class="analysis-loading">AI が詳細分析中...</div>`;
+
+  try {
+    const token = await getAccessToken();
+    const resp = await fetch(`${WORKER_BASE}/api/opportunity/analyze`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ opportunity_id: oppId }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error || "分析に失敗しました");
+    }
+
+    const analysis = await resp.json();
+    panel.innerHTML = renderDetailedAnalysis(analysis);
+  } catch (err) {
+    panel.innerHTML = `<div class="analysis-loading" style="color:var(--danger)">分析エラー: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function renderDetailedAnalysis(a) {
+  const diffClass = a.estimated_difficulty === "高" ? "high" : a.estimated_difficulty === "低" ? "low" : "mid";
+
+  const matchPoints = (a.match_points || []).map(p => `<li>${escapeHtml(p)}</li>`).join("");
+  const concerns = (a.concerns || []).map(c => `<li>${escapeHtml(c)}</li>`).join("");
+  const actions = (a.actions || []).map(ac => `<li>${escapeHtml(ac)}</li>`).join("");
+
+  return `
+    <div class="analysis-panel">
+      <div class="analysis-panel__summary">${escapeHtml(a.summary || "")}</div>
+
+      <div class="analysis-panel__section analysis-panel__section--match">
+        <h4>&#x2714; マッチポイント</h4>
+        <ul>${matchPoints}</ul>
+      </div>
+
+      <div class="analysis-panel__section analysis-panel__section--concern">
+        <h4>&#x26A0; 懸念点</h4>
+        <ul>${concerns}</ul>
+      </div>
+
+      <div class="analysis-panel__section analysis-panel__section--action">
+        <h4>&#x1F4CB; アクションプラン</h4>
+        <ul>${actions}</ul>
+      </div>
+
+      <div class="analysis-panel__meta">
+        <span class="analysis-badge analysis-badge--difficulty-${diffClass}">難易度: ${escapeHtml(a.estimated_difficulty || "中")}</span>
+        <span class="analysis-badge analysis-badge--days">準備目安: ${a.recommended_preparation_days || "?"}日</span>
+      </div>
+    </div>
+  `;
 }
 
 // ---------------------------------------------------------------------------

@@ -8,10 +8,12 @@
  *   PUT  /api/user/profile           - プロフィール更新
  *   PUT  /api/user/areas             - エリア設定更新
  *   GET  /api/user/opportunities     - マッチング案件一覧
+ *   POST /api/opportunity/analyze    - AI詳細分析
  *   GET  /api/user/subscription      - サブスク情報取得
  *   POST /api/checkout               - Stripe Checkout（サブスク）
  *   POST /api/webhook                - Stripe Webhook（サブスク）
  *   POST /api/cancel-subscription    - サブスク解約
+ *   POST /api/user/screen             - 初期30日スクリーニング
  *
  * Required secrets (wrangler secret put):
  *   GEMINI_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, SUPABASE_SERVICE_KEY
@@ -142,32 +144,47 @@ async function handleAnalyzeCompany(request, env) {
   let body;
   try { body = await request.json(); } catch { return errorResponse("不正なJSON", 400); }
 
-  const { url: companyUrl } = body;
-  if (!companyUrl || typeof companyUrl !== "string") return errorResponse("url は必須です", 400);
+  const { url: companyUrl, text: companyText } = body;
+  if (!companyUrl && !companyText) return errorResponse("url または text のいずれかは必須です", 400);
+  if (companyText && typeof companyText === "string" && companyText.trim().length < 50) {
+    return errorResponse("テキストは50文字以上入力してください", 400);
+  }
 
-  // 1. 会社サイトを取得
+  // 1. ページテキストを取得（URLモード）またはテキストをそのまま使用
   let pageText;
-  try {
-    const resp = await fetch(companyUrl, {
-      headers: { "User-Agent": "KouboNavi/1.0 (bantex.jp)" },
-      redirect: "follow",
-    });
-    if (!resp.ok) return errorResponse(`サイト取得エラー: HTTP ${resp.status}`, 502);
-    const html = await resp.text();
-    // HTMLタグを簡易除去
-    pageText = html
-      .replace(/<script[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[\s\S]*?<\/style>/gi, "")
-      .replace(/<[^>]+>/g, "\n")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 30000);
-  } catch (err) {
-    return errorResponse(`サイト取得失敗: ${err.message}`, 502);
+  let inputMode;
+  if (companyText && typeof companyText === "string" && companyText.trim().length >= 50) {
+    // テキスト入力モード
+    pageText = companyText.trim().slice(0, 30000);
+    inputMode = "text";
+  } else {
+    // URL入力モード
+    if (!companyUrl || typeof companyUrl !== "string") return errorResponse("url は必須です", 400);
+    inputMode = "url";
+    try {
+      const resp = await fetch(companyUrl, {
+        headers: { "User-Agent": "KouboNavi/1.0 (bantex.jp)" },
+        redirect: "follow",
+      });
+      if (!resp.ok) return errorResponse(`サイト取得エラー: HTTP ${resp.status}`, 502);
+      const html = await resp.text();
+      pageText = html
+        .replace(/<script[\s\S]*?<\/script>/gi, "")
+        .replace(/<style[\s\S]*?<\/style>/gi, "")
+        .replace(/<[^>]+>/g, "\n")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 30000);
+    } catch (err) {
+      return errorResponse(`サイト取得失敗: ${err.message}`, 502);
+    }
   }
 
   // 2. Gemini で分析
-  const prompt = `以下はある会社のウェブサイトのテキスト内容です。
+  const sourceDesc = inputMode === "url"
+    ? "以下はある会社のウェブサイトのテキスト内容です。"
+    : "以下はある会社の事業内容の自由記述です。";
+  const prompt = `${sourceDesc}
 この会社の事業内容・強み・対応可能な業務を分析し、JSON形式で出力してください。
 
 出力フォーマット:
@@ -302,13 +319,24 @@ async function handlePutProfile(request, env) {
     );
   }
 
-  // matching_keywords の更新
+  // matching_keywords の更新（company_profiles が未作成の場合は upsert）
   if (body.matching_keywords && Array.isArray(body.matching_keywords)) {
-    await supabaseRequest(
-      `/company_profiles?user_id=eq.${user_id}`, "PATCH",
-      { matching_keywords: body.matching_keywords },
-      env, { prefer: "return=minimal" }
+    const profileCheck = await supabaseRequest(
+      `/company_profiles?user_id=eq.${user_id}&select=id`, "GET", null, env
     );
+    if (profileCheck.data && profileCheck.data.length > 0) {
+      await supabaseRequest(
+        `/company_profiles?user_id=eq.${user_id}`, "PATCH",
+        { matching_keywords: body.matching_keywords },
+        env, { prefer: "return=minimal" }
+      );
+    } else {
+      await supabaseRequest(
+        `/company_profiles`, "POST",
+        { user_id, matching_keywords: body.matching_keywords },
+        env, { prefer: "return=minimal" }
+      );
+    }
   }
 
   return jsonResponse({ updated: true });
@@ -355,10 +383,24 @@ async function handleGetOpportunities(request, env) {
   const { user_id } = await getUserFromJWT(request, env);
   if (!user_id) return errorResponse("認証が必要です", 401);
 
+  // ティア判定
+  const userResult = await supabaseRequest(
+    `/koubo_users?id=eq.${user_id}&select=status,trial_ends_at`,
+    "GET", null, env
+  );
+  const user = userResult.data?.[0] || {};
+  const now = new Date();
+  const trialEnd = user.trial_ends_at ? new Date(user.trial_ends_at) : null;
+  const isPaid = user.status === "active" ||
+    (user.status === "trial" && trialEnd && trialEnd > now);
+  const tierMaxResults = isPaid ? 100 : 10;
+  const tier = isPaid ? "paid" : "free";
+
   const url = new URL(request.url);
   const scoreMin = url.searchParams.get("score_min") || "0";
   const scoreMax = url.searchParams.get("score_max") || "100";
-  const limit = url.searchParams.get("limit") || "50";
+  const requestedLimit = parseInt(url.searchParams.get("limit") || "100");
+  const maxLimit = Math.min(requestedLimit, tierMaxResults);
   const offset = url.searchParams.get("offset") || "0";
   const days = url.searchParams.get("days") || "30";
   const category = url.searchParams.get("category");
@@ -372,7 +414,7 @@ async function handleGetOpportunities(request, env) {
     `&created_at=gte.${since}` +
     `&select=*,opportunities(*)` +
     `&order=match_score.desc` +
-    `&limit=${limit}&offset=${offset}`;
+    `&limit=${maxLimit}&offset=${offset}`;
 
   const result = await supabaseRequest(query, "GET", null, env);
   if (!result.ok) return errorResponse("案件取得失敗", 500);
@@ -386,7 +428,165 @@ async function handleGetOpportunities(request, env) {
     items = items.filter(i => i.opportunities?.area_id === area);
   }
 
-  return jsonResponse({ opportunities: items, total: items.length });
+  // ランキング番号を付与
+  items.forEach((item, idx) => {
+    item.rank_position = item.rank_position || (idx + 1);
+  });
+
+  // 総件数を取得（ティア制限なし）
+  const countResult = await supabaseRequest(
+    `/user_opportunities?user_id=eq.${user_id}&is_dismissed=eq.false&created_at=gte.${since}&select=id`,
+    "GET", null, env, { headers: { "Prefer": "count=exact" } }
+  );
+
+  return jsonResponse({
+    opportunities: items,
+    total: items.length,
+    total_unfiltered: countResult.data?.length || items.length,
+    tier,
+    max_results: tierMaxResults,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/opportunity/analyze - AI詳細分析
+// ---------------------------------------------------------------------------
+
+async function handleAnalyzeOpportunity(request, env) {
+  const { user_id } = await getUserFromJWT(request, env);
+  if (!user_id) return errorResponse("認証が必要です", 401);
+
+  let body;
+  try { body = await request.json(); } catch { return errorResponse("不正なJSON", 400); }
+  const { opportunity_id } = body;
+  if (!opportunity_id) return errorResponse("opportunity_id は必須です", 400);
+
+  // キャッシュ確認: 既に詳細分析済みならDBから返す
+  const cached = await supabaseRequest(
+    `/user_opportunities?user_id=eq.${user_id}&opportunity_id=eq.${opportunity_id}&select=detailed_analysis,analysis_completed_at`,
+    "GET", null, env
+  );
+  const existing = cached.data?.[0];
+  if (existing?.detailed_analysis) {
+    return jsonResponse(existing.detailed_analysis);
+  }
+
+  // 案件データを取得
+  const oppResult = await supabaseRequest(
+    `/opportunities?id=eq.${opportunity_id}&select=*`,
+    "GET", null, env
+  );
+  const opp = oppResult.data?.[0];
+  if (!opp) return errorResponse("案件が見つかりません", 404);
+
+  // ユーザープロフィールを取得
+  const profileResult = await supabaseRequest(
+    `/company_profiles?user_id=eq.${user_id}&select=*&limit=1`,
+    "GET", null, env
+  );
+  const profile = profileResult.data?.[0] || {};
+
+  // マッチング情報を取得
+  const matchResult = await supabaseRequest(
+    `/user_opportunities?user_id=eq.${user_id}&opportunity_id=eq.${opportunity_id}&select=match_score,match_reason,recommendation`,
+    "GET", null, env
+  );
+  const matchInfo = matchResult.data?.[0] || {};
+
+  // detail_url がある場合はページを取得
+  let detailText = "";
+  if (opp.detail_url) {
+    try {
+      const resp = await fetch(opp.detail_url, {
+        headers: { "User-Agent": "KouboNavi/1.0 (bantex.jp)" },
+        redirect: "follow",
+      });
+      if (resp.ok) {
+        const html = await resp.text();
+        detailText = html
+          .replace(/<script[\s\S]*?<\/script>/gi, "")
+          .replace(/<style[\s\S]*?<\/style>/gi, "")
+          .replace(/<[^>]+>/g, "\n")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 30000);
+      }
+    } catch { /* ページ取得失敗は無視して案件基本情報のみで分析 */ }
+  }
+
+  // Gemini で詳細分析
+  const prompt = `あなたは公募案件と企業のマッチング分析の専門家です。
+以下の案件情報と企業プロフィールを照らし合わせて、詳細な分析レポートをJSON形式で出力してください。
+
+【案件情報】
+タイトル: ${opp.title || "不明"}
+カテゴリ: ${opp.category || "不明"}
+発注機関: ${opp.organization || "不明"}
+手法: ${opp.method || "不明"}
+締切: ${opp.deadline || "不明"}
+エリア: ${opp.area_id || "不明"}
+${detailText ? `\n【案件詳細ページの内容】\n${detailText}\n` : ""}
+【企業プロフィール】
+会社名: ${profile.company_name || "不明"}
+事業分野: ${(profile.business_areas || []).join("、")}
+提供サービス: ${(profile.services || []).join("、")}
+強み: ${(profile.strengths || []).join("、")}
+対象業界: ${(profile.target_industries || []).join("、")}
+保有資格: ${(profile.qualifications || []).join("、")}
+
+【既存マッチング情報】
+マッチスコア: ${matchInfo.match_score || "不明"}%
+マッチ理由: ${matchInfo.match_reason || "不明"}
+
+以下のJSON形式で出力してください:
+{
+  "summary": "総合評価（200文字程度）",
+  "match_points": ["企業とマッチするポイント1", "ポイント2", "ポイント3"],
+  "concerns": ["懸念点・リスク1", "懸念点2"],
+  "actions": ["具体的なアクション1", "アクション2", "アクション3"],
+  "estimated_difficulty": "高 or 中 or 低",
+  "recommended_preparation_days": 14
+}
+
+match_pointsは3〜5個、concernsは2〜3個、actionsは3〜5個生成してください。
+recommended_preparation_daysは準備に必要な日数の目安です。`;
+
+  const geminiUrl = `${GEMINI_API_BASE}/v1beta/models/gemini-2.0-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+  let geminiResp;
+  try {
+    geminiResp = await fetch(geminiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 4096, responseMimeType: "application/json" },
+      }),
+    });
+  } catch (err) {
+    return errorResponse(`Gemini API接続失敗: ${err.message}`, 502);
+  }
+
+  const geminiData = await geminiResp.json();
+  if (!geminiResp.ok) return errorResponse("AI分析に失敗しました", 502);
+
+  const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
+  let analysis;
+  try { analysis = JSON.parse(rawText); } catch { return errorResponse("AI分析結果の解析に失敗しました", 502); }
+
+  // DBに保存（キャッシュ）
+  await supabaseRequest(
+    `/user_opportunities?user_id=eq.${user_id}&opportunity_id=eq.${opportunity_id}`,
+    "PATCH",
+    {
+      detailed_analysis: analysis,
+      analysis_requested_at: new Date().toISOString(),
+      analysis_completed_at: new Date().toISOString(),
+    },
+    env,
+    { prefer: "return=minimal" }
+  );
+
+  return jsonResponse(analysis);
 }
 
 // ---------------------------------------------------------------------------
@@ -444,7 +644,7 @@ async function handleCheckout(request, env) {
   params.set("cancel_url", cancelUrl);
   params.set("metadata[user_id]", user_id);
   params.set("metadata[plan]", plan || "monthly");
-  params.set("subscription_data[trial_period_days]", "14");
+  params.set("subscription_data[trial_period_days]", "7");
   params.set("locale", "ja");
   params.set("payment_method_types[0]", "card");
   if (email) params.set("customer_email", email);
@@ -641,25 +841,47 @@ async function handleRegisterUser(request, env) {
   let body;
   try { body = await request.json(); } catch { return errorResponse("不正なJSON", 400); }
 
-  const { company_url, area_ids } = body;
-  if (!company_url) return errorResponse("company_url は必須です", 400);
+  const { company_url, company_text, area_ids, profile } = body;
+  if (!company_url && !company_text) {
+    return errorResponse("company_url または company_text のいずれかは必須です", 400);
+  }
 
-  const trialEnd = new Date(Date.now() + 14 * 86400000).toISOString();
+  const trialEnd = new Date(Date.now() + 7 * 86400000).toISOString();
 
   // koubo_users を upsert
-  await supabaseRequest("/koubo_users", "POST", {
+  const userData = {
     id: user_id,
-    company_url,
     notification_email: email,
     status: "trial",
     trial_ends_at: trialEnd,
-  }, env, {
+  };
+  if (company_url) userData.company_url = company_url;
+  if (company_text) userData.company_text = company_text;
+
+  await supabaseRequest("/koubo_users", "POST", userData, env, {
     prefer: "return=minimal",
     headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
   });
 
+  // プロフィールを更新（編集済みデータがあれば）
+  if (profile && typeof profile === "object") {
+    await supabaseRequest(`/company_profiles?user_id=eq.${user_id}`, "PATCH", {
+      company_name: profile.company_name || null,
+      location: profile.location || null,
+      business_areas: profile.business_areas || [],
+      services: profile.services || [],
+      strengths: profile.strengths || [],
+      matching_keywords: profile.matching_keywords || [],
+    }, env, { prefer: "return=minimal" });
+  }
+
   // エリア設定を保存
   if (Array.isArray(area_ids)) {
+    // 既存を無効化
+    await supabaseRequest(
+      `/user_areas?user_id=eq.${user_id}`, "PATCH",
+      { active: false }, env, { prefer: "return=minimal" }
+    );
     for (const areaId of area_ids) {
       await supabaseRequest("/user_areas", "POST", {
         user_id, area_id: areaId, active: true,
@@ -671,6 +893,153 @@ async function handleRegisterUser(request, env) {
   }
 
   return jsonResponse({ registered: true, trial_ends_at: trialEnd });
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/user/screen - 初期30日スクリーニング
+// ---------------------------------------------------------------------------
+
+async function handleInitialScreen(request, env, ctx) {
+  const { user_id } = await getUserFromJWT(request, env);
+  if (!user_id) return errorResponse("認証が必要です", 401);
+
+  // 既にスクリーニング済みかチェック
+  const userCheck = await supabaseRequest(
+    `/koubo_users?id=eq.${user_id}&select=initial_screening_done`,
+    "GET", null, env
+  );
+  if (userCheck.data?.[0]?.initial_screening_done) {
+    return jsonResponse({ status: "already_done" });
+  }
+
+  // 即時レスポンスを返し、バックグラウンドで処理
+  ctx.waitUntil((async () => {
+    try {
+      // ユーザーのエリアを取得
+      const areasResult = await supabaseRequest(
+        `/user_areas?user_id=eq.${user_id}&active=eq.true&select=area_id`,
+        "GET", null, env
+      );
+      const areaIds = (areasResult.data || []).map(a => a.area_id);
+      if (areaIds.length === 0) return;
+
+      // ユーザーのプロフィールを取得
+      const profileResult = await supabaseRequest(
+        `/company_profiles?user_id=eq.${user_id}&select=*&limit=1`,
+        "GET", null, env
+      );
+      const profile = profileResult.data?.[0] || {};
+      const keywords = profile.matching_keywords || [];
+
+      // 過去30日分の案件を取得
+      const since = new Date(Date.now() - 30 * 86400000).toISOString();
+      const areaFilter = areaIds.map(a => `area_id.eq.${a}`).join(",");
+      const oppsResult = await supabaseRequest(
+        `/opportunities?or=(${areaFilter})&scraped_at=gte.${since}&select=id,title,category,organization,method,area_id,deadline&order=scraped_at.desc&limit=300`,
+        "GET", null, env
+      );
+      const opportunities = oppsResult.data || [];
+      if (opportunities.length === 0) {
+        await supabaseRequest(`/koubo_users?id=eq.${user_id}`, "PATCH", {
+          initial_screening_done: true,
+          initial_screening_at: new Date().toISOString(),
+        }, env, { prefer: "return=minimal" });
+        return;
+      }
+
+      // 15件ずつバッチでGeminiマッチング
+      const batchSize = 15;
+      let allMatches = [];
+
+      for (let i = 0; i < opportunities.length; i += batchSize) {
+        const batch = opportunities.slice(i, i + batchSize);
+        const oppList = batch.map((o, idx) => `${idx + 1}. タイトル: ${o.title || "不明"} / カテゴリ: ${o.category || "不明"} / 発注機関: ${o.organization || "不明"} / 手法: ${o.method || "不明"}`).join("\n");
+
+        const prompt = `あなたは公募案件と企業のマッチング評価の専門家です。
+
+【企業プロフィール】
+会社名: ${profile.company_name || "不明"}
+事業分野: ${(profile.business_areas || []).join("、")}
+サービス: ${(profile.services || []).join("、")}
+強み: ${(profile.strengths || []).join("、")}
+キーワード: ${keywords.join("、")}
+
+【案件リスト】
+${oppList}
+
+各案件について以下のJSON配列で出力してください:
+[
+  {
+    "index": 1,
+    "match_score": 75,
+    "match_reason": "マッチする理由（1-2文）",
+    "recommendation": "応募推奨 or 検討 or 見送り"
+  }
+]
+
+match_scoreは0-100の整数で、企業と案件の適合度を評価してください。
+scoreが30未満の案件は配列に含めないでください。`;
+
+        const geminiUrl = `${GEMINI_API_BASE}/v1beta/models/gemini-2.0-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+        try {
+          const geminiResp = await fetch(geminiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.2, maxOutputTokens: 4096, responseMimeType: "application/json" },
+            }),
+          });
+          if (geminiResp.ok) {
+            const gd = await geminiResp.json();
+            const rawText = gd?.candidates?.[0]?.content?.parts?.[0]?.text ?? "[]";
+            let matches;
+            try { matches = JSON.parse(rawText); } catch { matches = []; }
+            if (!Array.isArray(matches)) matches = [];
+
+            for (const m of matches) {
+              const oppIdx = (m.index || 0) - 1;
+              if (oppIdx >= 0 && oppIdx < batch.length && m.match_score >= 30) {
+                allMatches.push({
+                  user_id,
+                  opportunity_id: batch[oppIdx].id,
+                  match_score: Math.min(100, Math.max(0, Math.round(m.match_score))),
+                  match_reason: (m.match_reason || "").slice(0, 500),
+                  recommendation: m.recommendation || "検討",
+                });
+              }
+            }
+          }
+        } catch { /* バッチ失敗は無視して続行 */ }
+      }
+
+      // ランキング付与（スコア降順）
+      allMatches.sort((a, b) => b.match_score - a.match_score);
+      allMatches.forEach((m, idx) => { m.rank_position = idx + 1; });
+
+      // DBに保存
+      for (const m of allMatches) {
+        await supabaseRequest("/user_opportunities", "POST", {
+          ...m,
+          is_dismissed: false,
+        }, env, {
+          prefer: "return=minimal",
+          headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
+        });
+      }
+
+      // スクリーニング完了フラグ更新
+      await supabaseRequest(`/koubo_users?id=eq.${user_id}`, "PATCH", {
+        initial_screening_done: true,
+        initial_screening_at: new Date().toISOString(),
+      }, env, { prefer: "return=minimal" });
+
+    } catch (err) {
+      console.error("初期スクリーニングエラー:", err.message);
+    }
+  })());
+
+  return jsonResponse({ status: "screening_started" });
 }
 
 // ---------------------------------------------------------------------------
@@ -690,11 +1059,13 @@ async function router(request, env, ctx) {
   if (path === "/api/user/profile" && method === "PUT") return handlePutProfile(request, env);
   if (path === "/api/user/areas" && method === "PUT") return handlePutAreas(request, env);
   if (path === "/api/user/opportunities" && method === "GET") return handleGetOpportunities(request, env);
+  if (path === "/api/opportunity/analyze" && method === "POST") return handleAnalyzeOpportunity(request, env);
   if (path === "/api/user/subscription" && method === "GET") return handleGetSubscription(request, env);
   if (path === "/api/checkout" && method === "POST") return handleCheckout(request, env);
   if (path === "/api/webhook" && method === "POST") return handleWebhook(request, env, ctx);
   if (path === "/api/cancel-subscription" && method === "POST") return handleCancelSubscription(request, env);
   if (path === "/api/register" && method === "POST") return handleRegisterUser(request, env);
+  if (path === "/api/user/screen" && method === "POST") return handleInitialScreen(request, env, ctx);
 
   return jsonResponse({ error: `未定義: ${method} ${path}` }, 404);
 }

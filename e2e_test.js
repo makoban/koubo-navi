@@ -293,7 +293,7 @@ async function runBrowserTests(accessToken) {
     report("Header Title", headerTitle === "公募ナビAI", headerTitle);
 
     const badge = await page.$eval(".header__badge", el => el.textContent.trim());
-    report("Version Badge", badge === "v1.0", badge);
+    report("Version Badge", badge === "v2.0", badge);
 
     // -- Test: Hero Section --
     const heroTitle = await page.$eval(".hero__title", el => el.textContent.trim());
@@ -329,10 +329,10 @@ async function runBrowserTests(accessToken) {
     report("Competitor Table Exists", !!compTable);
 
     const compRows = await page.$$(".competitor__table tbody tr");
-    report("Competitor Table Rows (8)", compRows.length === 8, `count: ${compRows.length}`);
+    report("Competitor Table Rows (9)", compRows.length === 9, `count: ${compRows.length}`);
 
     const selfCells = await page.$$(".competitor__self");
-    report("Self-highlight Cells Exist", selfCells.length >= 8, `count: ${selfCells.length}`);
+    report("Self-highlight Cells Exist", selfCells.length >= 9, `count: ${selfCells.length}`);
 
     // -- Test: Sample Score Cards --
     const sampleCards = await page.$$(".sample-card");
@@ -354,15 +354,15 @@ async function runBrowserTests(accessToken) {
 
     // -- Test: FAQ Section --
     const faqItems = await page.$$(".faq__item");
-    report("FAQ Items (5)", faqItems.length === 5, `count: ${faqItems.length}`);
+    report("FAQ Items (6)", faqItems.length === 6, `count: ${faqItems.length}`);
 
     // -- Test: CTA Section --
     const ctaTitle = await page.$eval(".cta h2", el => el.textContent.trim());
-    report("CTA Section", ctaTitle.includes("14日間"), ctaTitle);
+    report("CTA Section", ctaTitle.includes("7日間"), ctaTitle);
 
     // -- Test: Footer --
     const footerText = await page.$eval(".footer", el => el.textContent.trim());
-    report("Footer Contains v1.0", footerText.includes("v1.0"));
+    report("Footer Contains v2.0", footerText.includes("v2.0"));
     report("Footer Contains bantex", footerText.includes("bantex"));
 
     const footerLinks = await page.$$eval(".footer__links a", els => els.map(e => ({

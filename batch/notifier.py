@@ -12,12 +12,14 @@ import db
 logger = logging.getLogger(__name__)
 
 
-def send_notification(user: dict, matches: list[dict]) -> bool:
+def send_notification(user: dict, matches: list[dict], tier: str = "free", total_count: int = 0) -> bool:
     """ユーザーにマッチング結果メールを送信する。
 
     Args:
         user: koubo_users レコード。
-        matches: get_unnotified_matches() の結果（opportunities 情報含む）。
+        matches: 通知対象のマッチング結果。
+        tier: "paid" or "free"。
+        total_count: フィルタ前の全件数。
 
     Returns:
         送信成功なら True。
@@ -35,8 +37,8 @@ def send_notification(user: dict, matches: list[dict]) -> bool:
         return False
 
     # メール本文を組み立て
-    html_body = _build_email_html(matches)
-    subject = f"【公募ナビAI】新着マッチング {len(matches)}件"
+    html_body = _build_email_html(matches, tier=tier, total_count=total_count)
+    subject = f"【公募ナビAI】本日の新着マッチング TOP {len(matches)}"
 
     try:
         resp = requests.post(
@@ -75,7 +77,13 @@ def notify_user(user: dict) -> int:
     if not matches:
         return 0
 
-    success = send_notification(user, matches)
+    # ティア別制限: 無料ユーザーはTOP10のみ
+    tier = db.get_user_tier(user)
+    max_in_email = 100 if tier == "paid" else 10
+    total_matches = len(matches)
+    matches_to_send = matches[:max_in_email]
+
+    success = send_notification(user, matches_to_send, tier=tier, total_count=total_matches)
 
     if success:
         opp_ids = [m["opportunity_id"] for m in matches]
@@ -112,12 +120,13 @@ def _log_notification(user_id: str, count: int, status: str):
         logger.debug("通知ログ保存失敗: %s", exc)
 
 
-def _build_email_html(matches: list[dict]) -> str:
-    """マッチング結果のHTMLメールを生成する。"""
+def _build_email_html(matches: list[dict], tier: str = "free", total_count: int = 0) -> str:
+    """マッチング結果のHTMLメールを生成する（ランキング付き）。"""
     rows = []
-    for m in matches:
+    for idx, m in enumerate(matches, start=1):
         opp = m.get("opportunities", {}) or {}
         score = m.get("match_score", 0)
+        rank = m.get("rank_position", idx)
         title = opp.get("title", m.get("title", "不明"))
         org = opp.get("organization", "不明")
         category = opp.get("category", "")
@@ -134,6 +143,14 @@ def _build_email_html(matches: list[dict]) -> str:
         else:
             badge_color = "#94a3b8"
 
+        # ランキングバッジ色
+        if rank <= 3:
+            rank_color = "#ffd700"
+        elif rank <= 10:
+            rank_color = "#c9a96e"
+        else:
+            rank_color = "#94a3b8"
+
         link_html = ""
         if detail_url:
             link_html = f'<a href="{detail_url}" style="color:#f59e0b;">詳細を見る</a>'
@@ -141,6 +158,7 @@ def _build_email_html(matches: list[dict]) -> str:
         rows.append(f"""
         <tr>
           <td style="padding:12px;border-bottom:1px solid #333;">
+            <span style="color:{rank_color};font-size:16px;font-weight:bold;margin-right:8px;">#{rank}</span>
             <span style="background:{badge_color};color:#fff;padding:2px 8px;border-radius:4px;font-size:13px;font-weight:bold;">{score}%</span>
             <span style="margin-left:8px;color:#94a3b8;font-size:12px;">{recommendation}</span>
             <div style="margin-top:6px;font-size:15px;font-weight:bold;color:#f1f5f9;">{title}</div>
@@ -151,22 +169,48 @@ def _build_email_html(matches: list[dict]) -> str:
           </td>
         </tr>""")
 
+    # 無料ユーザー向けアップグレードCTA
+    upgrade_html = ""
+    if tier == "free" and total_count > len(matches):
+        remaining = total_count - len(matches)
+        upgrade_html = f"""
+    <div style="background:#1a1f35;border-radius:8px;padding:20px;text-align:center;margin-top:16px;border:1px solid #c9a96e33;">
+      <p style="color:#c9a96e;font-size:14px;font-weight:bold;margin:0 0 8px;">
+        他に {remaining}件 のマッチング案件があります
+      </p>
+      <p style="color:#94a3b8;font-size:13px;margin:0 0 12px;">
+        有料プランなら最大100件のランキングを確認できます
+      </p>
+      <a href="https://koubo-navi.bantex.jp?upgrade=1" style="display:inline-block;background:#c9a96e;color:#0a0e1a;padding:10px 24px;border-radius:8px;font-weight:bold;text-decoration:none;font-size:13px;">
+        プランをアップグレード
+      </a>
+    </div>"""
+
+    today = datetime.now(timezone.utc).strftime("%Y年%m月%d日")
+
     return f"""<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#0a0e1a;font-family:'Helvetica Neue',Arial,sans-serif;">
   <div style="max-width:600px;margin:0 auto;padding:24px;">
     <div style="text-align:center;margin-bottom:24px;">
-      <h1 style="color:#f59e0b;font-size:22px;margin:0;">公募ナビAI</h1>
-      <p style="color:#94a3b8;font-size:14px;margin:8px 0 0;">新しいマッチング案件が見つかりました</p>
+      <h1 style="color:#c9a96e;font-size:22px;margin:0;">公募ナビAI</h1>
+      <p style="color:#f1f5f9;font-size:16px;font-weight:bold;margin:12px 0 4px;">本日の新着マッチング TOP {len(matches)}</p>
+      <p style="color:#94a3b8;font-size:13px;margin:0;">{today}</p>
     </div>
 
     <table style="width:100%;border-collapse:collapse;background:#1a1f35;border-radius:8px;overflow:hidden;">
       {''.join(rows)}
     </table>
 
+    {upgrade_html}
+
+    <div style="background:#1a1f3588;border-radius:8px;padding:12px 16px;margin-top:16px;text-align:center;">
+      <p style="color:#94a3b8;font-size:12px;margin:0;">💡 案件をクリックして「AI詳細分析」で応募のヒントが得られます</p>
+    </div>
+
     <div style="text-align:center;margin-top:24px;">
-      <a href="https://koubo-navi.bantex.jp" style="display:inline-block;background:#f59e0b;color:#0a0e1a;padding:12px 32px;border-radius:8px;font-weight:bold;text-decoration:none;font-size:15px;">
+      <a href="https://koubo-navi.bantex.jp" style="display:inline-block;background:#c9a96e;color:#0a0e1a;padding:12px 32px;border-radius:8px;font-weight:bold;text-decoration:none;font-size:15px;">
         ダッシュボードで確認する
       </a>
     </div>

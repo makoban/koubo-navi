@@ -38,6 +38,9 @@ def run_daily_check():
         log_id = db.create_batch_log()
         logger.info("=== バッチ開始 (log_id=%s) ===", log_id)
 
+        # 0. 未スクリーニングユーザーのフォールバックチェック
+        _run_initial_screening_fallback()
+
         # 1. アクティブユーザーを取得
         users = db.get_active_users()
         logger.info("アクティブユーザー: %d人", len(users))
@@ -182,6 +185,69 @@ def run_daily_check():
             _finish_log(log_id, stats, "failed")
 
     return stats
+
+
+def _run_initial_screening_fallback():
+    """Worker のタイムアウト等で初期スクリーニングが完了しなかったユーザーを補完する。"""
+    try:
+        unscreened = db.get_unscreened_users()
+        if not unscreened:
+            return
+
+        logger.info("=== 未スクリーニングユーザー: %d人 ===", len(unscreened))
+
+        for user in unscreened:
+            user_id = user["id"]
+            try:
+                profile = db.get_user_profile(user_id)
+                if not profile:
+                    logger.warning("プロフィール未設定(スクリーニング): %s", user_id)
+                    continue
+
+                areas = db.get_user_areas(user_id)
+                if not areas:
+                    logger.warning("エリア未設定(スクリーニング): %s", user_id)
+                    db.mark_screening_done(user_id)
+                    continue
+
+                # 過去30日分の案件を集める
+                from datetime import timedelta
+                import requests as req
+
+                since = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+                area_filter = ",".join(f"area_id.eq.{a}" for a in areas)
+
+                resp = req.get(
+                    db._url(
+                        f"/opportunities?or=({area_filter})"
+                        f"&scraped_at=gte.{since}"
+                        "&select=*&order=scraped_at.desc&limit=300"
+                    ),
+                    headers=db._headers(),
+                    timeout=30,
+                )
+                resp.raise_for_status()
+                opps = resp.json()
+
+                if not opps:
+                    logger.info("対象案件なし(スクリーニング): %s", user_id)
+                    db.mark_screening_done(user_id)
+                    continue
+
+                logger.info("スクリーニング対象: %d件 (user=%s)", len(opps), user_id)
+
+                matches = match_opportunities(profile, opps)
+                if matches:
+                    db.save_user_opportunities(user_id, matches)
+                    logger.info("スクリーニング結果: %d件マッチ (user=%s)", len(matches), user_id)
+
+                db.mark_screening_done(user_id)
+
+            except Exception as exc:
+                logger.error("スクリーニング失敗 user=%s: %s", user_id, exc)
+
+    except Exception as exc:
+        logger.error("未スクリーニングチェック失敗: %s", exc)
 
 
 def _finish_log(log_id: str, stats: dict, status: str):

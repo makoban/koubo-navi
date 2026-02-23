@@ -149,8 +149,11 @@ def upsert_opportunities(opportunities: list[dict], area_id: str, source_id: str
 # --- User Opportunities (Match Results) ---
 
 def save_user_opportunities(user_id: str, matches: list[dict]):
-    """ユーザーのマッチング結果を保存。"""
-    for m in matches:
+    """ユーザーのマッチング結果を保存（ランク付き）。"""
+    # スコア降順でソートし、rank_position を付与
+    sorted_matches = sorted(matches, key=lambda m: m.get("match_score", 0), reverse=True)
+
+    for rank, m in enumerate(sorted_matches, start=1):
         opp_id = m.get("opportunity_id")
         if not opp_id:
             continue
@@ -163,6 +166,7 @@ def save_user_opportunities(user_id: str, matches: list[dict]):
             "risk_notes": m.get("risk_notes"),
             "recommendation": m.get("recommendation"),
             "action_items": m.get("action_items", []),
+            "rank_position": rank,
         }
         try:
             requests.post(
@@ -176,6 +180,49 @@ def save_user_opportunities(user_id: str, matches: list[dict]):
             )
         except Exception as e:
             logger.debug("save match skip: %s", e)
+
+
+def get_unscreened_users() -> list[dict]:
+    """初期スクリーニング未完了のユーザーを取得。"""
+    resp = requests.get(
+        _url(
+            "/koubo_users?status=in.(active,trial)"
+            "&initial_screening_done=eq.false"
+            "&select=*"
+        ),
+        headers=_headers(),
+        timeout=15,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def mark_screening_done(user_id: str):
+    """初期スクリーニング完了フラグを更新。"""
+    now = datetime.now(timezone.utc).isoformat()
+    requests.patch(
+        _url(f"/koubo_users?id=eq.{user_id}"),
+        headers=_headers("return=minimal"),
+        json={"initial_screening_done": True, "initial_screening_at": now},
+        timeout=10,
+    )
+
+
+def get_user_tier(user: dict) -> str:
+    """ユーザーのティアを判定。paid or free。"""
+    status = user.get("status", "")
+    trial_end = user.get("trial_ends_at")
+    if status == "active":
+        return "paid"
+    if status == "trial" and trial_end:
+        from datetime import datetime, timezone
+        try:
+            end_dt = datetime.fromisoformat(trial_end.replace("Z", "+00:00"))
+            if end_dt > datetime.now(timezone.utc):
+                return "paid"
+        except (ValueError, TypeError):
+            pass
+    return "free"
 
 
 def get_unnotified_matches(user_id: str, threshold: int = 40) -> list[dict]:
