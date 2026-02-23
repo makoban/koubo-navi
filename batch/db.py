@@ -1,0 +1,240 @@
+"""公募ナビAI - Supabase DB操作モジュール"""
+
+import json
+import logging
+import os
+from datetime import datetime, timezone
+from typing import Optional
+
+import requests
+
+logger = logging.getLogger(__name__)
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://ypyrjsdotkeyvzequdez.supabase.co")
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
+
+
+def _headers(prefer: str = "return=representation") -> dict:
+    return {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": prefer,
+    }
+
+
+def _url(path: str) -> str:
+    return f"{SUPABASE_URL}/rest/v1{path}"
+
+
+# --- Users ---
+
+def get_active_users() -> list[dict]:
+    """アクティブなユーザー一覧（trial or active）を取得。"""
+    resp = requests.get(
+        _url("/koubo_users?status=in.(active,trial)&select=*"),
+        headers=_headers(),
+        timeout=15,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def get_user_profile(user_id: str) -> Optional[dict]:
+    """ユーザーの会社プロフィールを取得。"""
+    resp = requests.get(
+        _url(f"/company_profiles?user_id=eq.{user_id}&select=*&limit=1"),
+        headers=_headers(),
+        timeout=10,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return data[0] if data else None
+
+
+def get_user_areas(user_id: str) -> list[str]:
+    """ユーザーのアクティブなエリアIDリストを取得。"""
+    resp = requests.get(
+        _url(f"/user_areas?user_id=eq.{user_id}&active=eq.true&select=area_id"),
+        headers=_headers(),
+        timeout=10,
+    )
+    resp.raise_for_status()
+    return [r["area_id"] for r in resp.json()]
+
+
+# --- Area Sources ---
+
+def get_area_sources(area_id: str) -> list[dict]:
+    """指定エリアのアクティブなデータソースを取得。"""
+    resp = requests.get(
+        _url(f"/area_sources?area_id=eq.{area_id}&active=eq.true&select=*"),
+        headers=_headers(),
+        timeout=10,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def update_source_status(
+    source_id: str,
+    success: bool,
+    last_checked: Optional[str] = None,
+):
+    """ソースの成功/失敗ステータスを更新。"""
+    now = last_checked or datetime.now(timezone.utc).isoformat()
+    body: dict = {"last_checked_at": now}
+
+    if success:
+        body["last_success_at"] = now
+        body["consecutive_failures"] = 0
+    else:
+        # 失敗カウントをインクリメント（Supabase REST では直接 increment できないのでGET→PATCH）
+        resp = requests.get(
+            _url(f"/area_sources?id=eq.{source_id}&select=consecutive_failures"),
+            headers=_headers(),
+            timeout=10,
+        )
+        resp.raise_for_status()
+        current = resp.json()[0].get("consecutive_failures", 0) if resp.json() else 0
+        body["consecutive_failures"] = current + 1
+
+    requests.patch(
+        _url(f"/area_sources?id=eq.{source_id}"),
+        headers=_headers("return=minimal"),
+        json=body,
+        timeout=10,
+    )
+
+
+# --- Opportunities ---
+
+def upsert_opportunities(opportunities: list[dict], area_id: str, source_id: str) -> list[dict]:
+    """案件をDB保存（重複はスキップ）。保存された案件を返す。"""
+    saved = []
+    for opp in opportunities:
+        record = {
+            "area_id": area_id,
+            "source_id": source_id,
+            "title": (opp.get("title") or "不明")[:500],
+            "organization": opp.get("organization"),
+            "category": opp.get("category"),
+            "method": opp.get("method"),
+            "deadline": opp.get("deadline"),
+            "budget": opp.get("budget"),
+            "summary": opp.get("summary"),
+            "requirements": opp.get("requirements"),
+            "detail_url": opp.get("detail_url"),
+        }
+        try:
+            resp = requests.post(
+                _url("/opportunities"),
+                headers={
+                    **_headers("return=representation"),
+                    "Prefer": "resolution=merge-duplicates,return=representation",
+                },
+                json=record,
+                timeout=10,
+            )
+            if resp.ok:
+                data = resp.json()
+                if data:
+                    saved.append(data[0] if isinstance(data, list) else data)
+        except Exception as e:
+            logger.debug("upsert skip: %s", e)
+
+    return saved
+
+
+# --- User Opportunities (Match Results) ---
+
+def save_user_opportunities(user_id: str, matches: list[dict]):
+    """ユーザーのマッチング結果を保存。"""
+    for m in matches:
+        opp_id = m.get("opportunity_id")
+        if not opp_id:
+            continue
+
+        record = {
+            "user_id": user_id,
+            "opportunity_id": opp_id,
+            "match_score": m.get("match_score", 0),
+            "match_reason": m.get("match_reason"),
+            "risk_notes": m.get("risk_notes"),
+            "recommendation": m.get("recommendation"),
+            "action_items": m.get("action_items", []),
+        }
+        try:
+            requests.post(
+                _url("/user_opportunities"),
+                headers={
+                    **_headers("return=minimal"),
+                    "Prefer": "resolution=merge-duplicates,return=minimal",
+                },
+                json=record,
+                timeout=10,
+            )
+        except Exception as e:
+            logger.debug("save match skip: %s", e)
+
+
+def get_unnotified_matches(user_id: str, threshold: int = 40) -> list[dict]:
+    """未通知のマッチング結果を取得。"""
+    resp = requests.get(
+        _url(
+            f"/user_opportunities?user_id=eq.{user_id}"
+            f"&is_notified=eq.false"
+            f"&match_score=gte.{threshold}"
+            "&select=*,opportunities(*)"
+            "&order=match_score.desc"
+        ),
+        headers=_headers(),
+        timeout=15,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def mark_as_notified(user_id: str, opportunity_ids: list[str]):
+    """マッチング結果を通知済みに更新。"""
+    now = datetime.now(timezone.utc).isoformat()
+    for opp_id in opportunity_ids:
+        try:
+            requests.patch(
+                _url(
+                    f"/user_opportunities?user_id=eq.{user_id}"
+                    f"&opportunity_id=eq.{opp_id}"
+                ),
+                headers=_headers("return=minimal"),
+                json={"is_notified": True, "notified_at": now},
+                timeout=10,
+            )
+        except Exception as e:
+            logger.debug("mark notified skip: %s", e)
+
+
+# --- Batch Logs ---
+
+def create_batch_log() -> Optional[str]:
+    """バッチログを作成し、IDを返す。"""
+    resp = requests.post(
+        _url("/batch_logs"),
+        headers=_headers(),
+        json={"status": "running"},
+        timeout=10,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    if isinstance(data, list) and data:
+        return data[0]["id"]
+    return data.get("id") if isinstance(data, dict) else None
+
+
+def update_batch_log(log_id: str, **kwargs):
+    """バッチログを更新。"""
+    requests.patch(
+        _url(f"/batch_logs?id=eq.{log_id}"),
+        headers=_headers("return=minimal"),
+        json=kwargs,
+        timeout=10,
+    )

@@ -1,0 +1,212 @@
+-- 公募ナビAI - 初期スキーマ
+-- Supabase PostgreSQL に実行する
+-- 既存の auth.users テーブルと連携
+
+-- ============================================================
+-- 1. koubo_users: 公募ナビ固有のユーザー情報
+-- ============================================================
+CREATE TABLE IF NOT EXISTS koubo_users (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  company_url TEXT NOT NULL,
+  notification_email TEXT,
+  notification_threshold INTEGER DEFAULT 40,
+  email_notify BOOLEAN DEFAULT true,
+  status TEXT DEFAULT 'trial',  -- trial / active / paused / cancelled
+  trial_ends_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE koubo_users ENABLE ROW LEVEL SECURITY;
+CREATE POLICY koubo_users_own ON koubo_users
+  FOR ALL USING (id = auth.uid());
+
+-- ============================================================
+-- 2. company_profiles: AI分析による会社プロフィール
+-- ============================================================
+CREATE TABLE IF NOT EXISTS company_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES koubo_users(id) ON DELETE CASCADE,
+  company_name TEXT,
+  location TEXT,
+  business_areas TEXT[],
+  services TEXT[],
+  strengths TEXT[],
+  target_industries TEXT[],
+  qualifications TEXT[],
+  matching_keywords TEXT[],
+  raw_analysis JSONB,
+  analyzed_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id)
+);
+
+ALTER TABLE company_profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY cp_own ON company_profiles
+  FOR ALL USING (user_id = auth.uid());
+
+-- ============================================================
+-- 3. user_areas: ユーザーごとのエリア設定
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_areas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES koubo_users(id) ON DELETE CASCADE,
+  area_id TEXT NOT NULL,
+  active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, area_id)
+);
+
+ALTER TABLE user_areas ENABLE ROW LEVEL SECURITY;
+CREATE POLICY ua_own ON user_areas
+  FOR ALL USING (user_id = auth.uid());
+
+-- ============================================================
+-- 4. opportunities: スクレイピングした公募案件（全ユーザー共通）
+-- ============================================================
+CREATE TABLE IF NOT EXISTS opportunities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  area_id TEXT NOT NULL,
+  source_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  organization TEXT,
+  category TEXT,
+  method TEXT,
+  deadline DATE,
+  budget TEXT,
+  summary TEXT,
+  requirements TEXT,
+  detail_url TEXT,
+  scraped_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(source_id, title)
+);
+
+CREATE INDEX IF NOT EXISTS idx_opp_area_scraped
+  ON opportunities(area_id, scraped_at DESC);
+CREATE INDEX IF NOT EXISTS idx_opp_deadline
+  ON opportunities(deadline DESC NULLS LAST);
+
+ALTER TABLE opportunities ENABLE ROW LEVEL SECURITY;
+CREATE POLICY opp_read ON opportunities
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+-- ============================================================
+-- 5. user_opportunities: ユーザーごとのマッチング結果
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_opportunities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES koubo_users(id) ON DELETE CASCADE,
+  opportunity_id UUID NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
+  match_score INTEGER NOT NULL,
+  match_reason TEXT,
+  risk_notes TEXT,
+  recommendation TEXT,
+  action_items TEXT[],
+  is_notified BOOLEAN DEFAULT false,
+  notified_at TIMESTAMPTZ,
+  is_bookmarked BOOLEAN DEFAULT false,
+  is_dismissed BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, opportunity_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_uo_score
+  ON user_opportunities(user_id, match_score DESC);
+CREATE INDEX IF NOT EXISTS idx_uo_notified
+  ON user_opportunities(user_id, is_notified, created_at DESC);
+
+ALTER TABLE user_opportunities ENABLE ROW LEVEL SECURITY;
+CREATE POLICY uo_own ON user_opportunities
+  FOR ALL USING (user_id = auth.uid());
+
+-- ============================================================
+-- 6. notifications: 通知送信履歴
+-- ============================================================
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES koubo_users(id) ON DELETE CASCADE,
+  channel TEXT NOT NULL DEFAULT 'email',
+  status TEXT NOT NULL DEFAULT 'sent',
+  opportunities_count INTEGER DEFAULT 0,
+  error_message TEXT,
+  sent_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY notif_own ON notifications
+  FOR SELECT USING (user_id = auth.uid());
+
+-- ============================================================
+-- 7. batch_logs: バッチ実行ログ（管理者用）
+-- ============================================================
+CREATE TABLE IF NOT EXISTS batch_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  finished_at TIMESTAMPTZ,
+  users_processed INTEGER DEFAULT 0,
+  opportunities_scraped INTEGER DEFAULT 0,
+  matches_created INTEGER DEFAULT 0,
+  notifications_sent INTEGER DEFAULT 0,
+  errors_count INTEGER DEFAULT 0,
+  error_details JSONB,
+  status TEXT DEFAULT 'running'
+);
+
+-- batch_logs は RLS なし（Service Key でのみアクセス）
+
+-- ============================================================
+-- 8. area_sources: エリア・データソース定義（管理テーブル）
+-- ============================================================
+CREATE TABLE IF NOT EXISTS area_sources (
+  id TEXT PRIMARY KEY,
+  area_id TEXT NOT NULL,
+  area_name TEXT NOT NULL,
+  source_name TEXT NOT NULL,
+  url TEXT NOT NULL,
+  active BOOLEAN DEFAULT true,
+  consecutive_failures INTEGER DEFAULT 0,
+  last_checked_at TIMESTAMPTZ,
+  last_success_at TIMESTAMPTZ,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE area_sources ENABLE ROW LEVEL SECURITY;
+CREATE POLICY as_read ON area_sources
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+-- ============================================================
+-- 9. koubo_subscriptions: Stripeサブスク情報
+-- ============================================================
+CREATE TABLE IF NOT EXISTS koubo_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES koubo_users(id) ON DELETE CASCADE,
+  stripe_customer_id TEXT NOT NULL,
+  stripe_subscription_id TEXT NOT NULL,
+  plan TEXT NOT NULL DEFAULT 'monthly',
+  status TEXT NOT NULL DEFAULT 'active',
+  current_period_end TIMESTAMPTZ,
+  cancelled_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id)
+);
+
+ALTER TABLE koubo_subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY sub_own ON koubo_subscriptions
+  FOR SELECT USING (user_id = auth.uid());
+
+-- ============================================================
+-- 初期データ: エリアソース（MVP 5エリア）
+-- ============================================================
+INSERT INTO area_sources (id, area_id, area_name, source_name, url) VALUES
+  ('aichi-pref', 'aichi', '愛知県', '愛知県 入札・契約・公売情報', 'https://www.pref.aichi.jp/life/5/19/'),
+  ('aichi-nagoya', 'aichi', '愛知県', '名古屋市 入札・契約', 'https://www.city.nagoya.jp/jigyou/category/43-0-0-0-0-0-0-0-0-0.html'),
+  ('aichi-houmukyoku', 'aichi', '愛知県', '名古屋法務局 入札・公募', 'https://houmukyoku.moj.go.jp/nagoya/table/nyuusatsu/all.html'),
+  ('tokyo-zaimu', 'tokyo', '東京都', '東京都財務局 契約情報', 'https://www.zaimu.metro.tokyo.lg.jp/keiyaku/'),
+  ('tokyo-metro', 'tokyo', '東京都', '東京都 入札・契約', 'https://www.metro.tokyo.lg.jp/tosei/hodohappyo/nyusatsu.html'),
+  ('osaka-pref', 'osaka', '大阪府', '大阪府 入札・契約情報', 'https://www.pref.osaka.lg.jp/gyoumu/nyuusatsu/index.html'),
+  ('osaka-city', 'osaka', '大阪府', '大阪市 入札・契約情報', 'https://www.city.osaka.lg.jp/zaisei/page/0000006691.html'),
+  ('national-aichi-roudou', 'national', '国（中央省庁）', '愛知労働局 入札情報', 'https://jsite.mhlw.go.jp/aichi-roudoukyoku/choutatsu_uriharai/nyusatsu.html'),
+  ('national-nagoya-kokuzei', 'national', '国（中央省庁）', '名古屋国税局 調達情報', 'https://www.nta.go.jp/about/organization/nagoya/procurement/chotatsu.htm'),
+  ('kanagawa-pref', 'kanagawa', '神奈川県', '神奈川県 入札・契約情報', 'https://www.pref.kanagawa.jp/osirase/nyusatsu.html'),
+  ('kanagawa-yokohama', 'kanagawa', '神奈川県', '横浜市 入札・契約情報', 'https://www.city.yokohama.lg.jp/business/nyusatsu/')
+ON CONFLICT (id) DO NOTHING;

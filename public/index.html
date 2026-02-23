@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>公募ナビAI - URLを入れるだけ。あとは寝て待つ。</title>
+  <meta name="description" content="行政の公募・入札案件を、AIが毎日自動でチェックして通知する。会社URLを入力するだけで始められる。">
+  <link rel="stylesheet" href="style.css">
+  <!-- Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+  <!-- ============================================================ -->
+  <!-- Header -->
+  <!-- ============================================================ -->
+  <header class="header">
+    <div class="header__inner">
+      <div class="header__logo">
+        <span class="header__icon">📋</span>
+        <span class="header__title">公募ナビAI</span>
+        <div class="header__badge">v1.0</div>
+      </div>
+      <div class="header__actions" id="authArea">
+        <button class="btn btn--outline btn--sm" id="loginBtn" onclick="showLoginModal()">ログイン</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================================================ -->
+  <!-- Landing Page (shown when not logged in or not onboarded) -->
+  <!-- ============================================================ -->
+  <main id="landingPage">
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero__content">
+        <h1 class="hero__title">URLを入れるだけ。<br>あとは寝て待つ。</h1>
+        <p class="hero__subtitle">行政の公募・入札案件を、AIが毎日自動でチェックして通知する</p>
+        <button class="btn btn--primary btn--lg" onclick="startOnboarding()">無料で始める（14日間無料）</button>
+        <p class="hero__note">クレジットカード不要で登録できます</p>
+      </div>
+    </section>
+
+    <!-- 3 Steps -->
+    <section class="steps">
+      <h2 class="section-title">たった3ステップで完了</h2>
+      <div class="steps__grid">
+        <div class="step-card">
+          <div class="step-card__number">1</div>
+          <div class="step-card__icon">🌐</div>
+          <h3>会社URLを入力</h3>
+          <p>自社のウェブサイトURLを入力するだけ。業種やキーワードの手動設定は不要です。</p>
+        </div>
+        <div class="step-card">
+          <div class="step-card__number">2</div>
+          <div class="step-card__icon">🤖</div>
+          <h3>AIが事業内容を理解</h3>
+          <p>AIがウェブサイトを読み取り、事業内容・強み・対応可能な案件タイプを自動で判定します。</p>
+        </div>
+        <div class="step-card">
+          <div class="step-card__number">3</div>
+          <div class="step-card__icon">📩</div>
+          <h3>毎朝メールでお届け</h3>
+          <p>マッチする案件が見つかったら、毎朝8時にメールで通知。あとは確認するだけ。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Before / After -->
+    <section class="comparison">
+      <h2 class="section-title">もう毎日のチェックは不要</h2>
+      <div class="comparison__grid">
+        <div class="comparison__card comparison__card--before">
+          <h3>従来のやり方</h3>
+          <ul>
+            <li>毎日複数の行政サイトをチェック</li>
+            <li>自分の業種に合う案件を目視で探す</li>
+            <li>見落とし・確認漏れのリスク</li>
+            <li>1日30分〜1時間の作業</li>
+          </ul>
+          <div class="comparison__label">毎日の負担</div>
+        </div>
+        <div class="comparison__arrow">→</div>
+        <div class="comparison__card comparison__card--after">
+          <h3>公募ナビAI</h3>
+          <ul>
+            <li>URLを登録したら完了</li>
+            <li>AIが自動でマッチング判定</li>
+            <li>見落としゼロ・毎日確実</li>
+            <li>朝のメールを確認するだけ</li>
+          </ul>
+          <div class="comparison__label comparison__label--highlight">自動化</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Match Score Sample -->
+    <section class="sample-section">
+      <h2 class="section-title">AIマッチングの精度</h2>
+      <p class="section-desc">各案件に対して、あなたの事業との適合度をスコア化。注目案件だけをピックアップします。</p>
+      <div class="sample-cards">
+        <div class="sample-card sample-card--high">
+          <div class="sample-card__score">85%</div>
+          <div class="sample-card__badge">強く推奨</div>
+          <h4>ノーコード・ローコードツール運用業務</h4>
+          <p>愛知県 総務部 / 企画競争</p>
+          <p class="sample-card__reason">DX推進・業務効率化に合致。AI導入支援の知見も活用可能。</p>
+        </div>
+        <div class="sample-card sample-card--mid">
+          <div class="sample-card__score">68%</div>
+          <div class="sample-card__badge">推奨</div>
+          <h4>会計書類の電子化業務委託</h4>
+          <p>名古屋市 会計局 / 一般競争入札</p>
+          <p class="sample-card__reason">IT・デジタル化の知見を活かせる案件。</p>
+        </div>
+        <div class="sample-card sample-card--low">
+          <div class="sample-card__score">42%</div>
+          <div class="sample-card__badge">検討可</div>
+          <h4>施設管理システム保守業務</h4>
+          <p>東京都 財務局 / 指名競争入札</p>
+          <p class="sample-card__reason">関連性あり。実績があれば対応可能。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pricing -->
+    <section class="pricing" id="pricing">
+      <h2 class="section-title">料金プラン</h2>
+      <p class="section-desc">ランチ1回分の価格で、行政案件チェックを完全自動化</p>
+      <div class="pricing__grid">
+        <div class="pricing__card">
+          <h3>月額プラン</h3>
+          <div class="pricing__price"><span class="pricing__yen">¥</span>2,980<span class="pricing__period">/月</span></div>
+          <ul class="pricing__features">
+            <li>14日間無料トライアル</li>
+            <li>5エリア対応</li>
+            <li>毎日自動チェック</li>
+            <li>メール通知</li>
+            <li>マッチングスコア表示</li>
+            <li>いつでも解約可能</li>
+          </ul>
+          <button class="btn btn--primary btn--lg" onclick="startOnboarding()">無料で始める</button>
+        </div>
+        <div class="pricing__card pricing__card--yearly">
+          <div class="pricing__ribbon">2ヶ月分お得</div>
+          <h3>年額プラン</h3>
+          <div class="pricing__price"><span class="pricing__yen">¥</span>29,800<span class="pricing__period">/年</span></div>
+          <ul class="pricing__features">
+            <li>14日間無料トライアル</li>
+            <li>月額換算 ¥2,483</li>
+            <li>全機能利用可能</li>
+            <li>メール通知</li>
+            <li>マッチングスコア表示</li>
+            <li>いつでも解約可能</li>
+          </ul>
+          <button class="btn btn--outline btn--lg" onclick="startOnboarding('yearly')">年額で始める</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="faq">
+      <h2 class="section-title">よくある質問</h2>
+      <div class="faq__list">
+        <details class="faq__item">
+          <summary>自分で調べなくていいの？</summary>
+          <p>はい。会社URLを登録するだけで、AIが自動で行政の公募・入札ページをチェックし、マッチする案件をメールでお届けします。</p>
+        </details>
+        <details class="faq__item">
+          <summary>どんな案件が届くの？</summary>
+          <p>IT、コンサル、建設、印刷、清掃、警備など、あなたの事業にマッチする案件をAIが自動判定します。対応エリアは愛知・東京・大阪・神奈川・国（中央省庁）です。</p>
+        </details>
+        <details class="faq__item">
+          <summary>解約はいつでもできる？</summary>
+          <p>はい。マイページからいつでも解約できます。解約後も契約期間の終了まではサービスをご利用いただけます。</p>
+        </details>
+        <details class="faq__item">
+          <summary>無料トライアル中に課金される？</summary>
+          <p>いいえ。14日間は完全無料です。トライアル終了の3日前にメールでお知らせしますので、継続しない場合はその前に解約してください。</p>
+        </details>
+        <details class="faq__item">
+          <summary>AIの精度はどのくらい？</summary>
+          <p>プロトタイプテストでは、1エリアから83件の案件を検出し、最高マッチスコア85%を記録しています。日々改善を続けています。</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta">
+      <h2>まずは14日間、無料でお試しください</h2>
+      <p>会社URLを入力するだけ。設定は3分で完了します。</p>
+      <button class="btn btn--primary btn--lg" onclick="startOnboarding()">無料で始める</button>
+    </section>
+  </main>
+
+  <!-- ============================================================ -->
+  <!-- Onboarding Flow (multi-step wizard) -->
+  <!-- ============================================================ -->
+  <main id="onboardingPage" class="hidden">
+    <div class="onboarding">
+      <div class="onboarding__progress">
+        <div class="onboarding__step active" data-step="1">
+          <span class="onboarding__step-num">1</span>
+          <span>会社URL</span>
+        </div>
+        <div class="onboarding__step" data-step="2">
+          <span class="onboarding__step-num">2</span>
+          <span>AI分析確認</span>
+        </div>
+        <div class="onboarding__step" data-step="3">
+          <span class="onboarding__step-num">3</span>
+          <span>エリア選択</span>
+        </div>
+      </div>
+
+      <!-- Step 1: Company URL -->
+      <div class="onboarding__panel" id="obStep1">
+        <h2>会社のウェブサイトURLを入力してください</h2>
+        <p>AIがサイトを読み取り、事業内容を自動で分析します。</p>
+        <div class="input-group">
+          <input type="url" id="companyUrlInput" placeholder="https://example.co.jp" class="input input--lg">
+          <button class="btn btn--primary btn--lg" id="analyzeBtn" onclick="analyzeCompany()">AIで分析する</button>
+        </div>
+        <div id="analyzeStatus" class="status-msg hidden"></div>
+      </div>
+
+      <!-- Step 2: Confirm Profile -->
+      <div class="onboarding__panel hidden" id="obStep2">
+        <h2>AI分析結果を確認してください</h2>
+        <p>内容を修正することもできます。</p>
+        <div class="profile-card" id="profileCard">
+          <!-- JS で動的に描画 -->
+        </div>
+        <div class="onboarding__actions">
+          <button class="btn btn--outline" onclick="goOnboardingStep(1)">戻る</button>
+          <button class="btn btn--primary" onclick="goOnboardingStep(3)">次へ：エリア選択</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Area Selection -->
+      <div class="onboarding__panel hidden" id="obStep3">
+        <h2>チェックしたいエリアを選択してください</h2>
+        <p>選択したエリアの公募・入札情報を毎日自動でチェックします。</p>
+        <div class="area-selector" id="areaSelector">
+          <!-- JS で動的に描画 -->
+        </div>
+        <div class="onboarding__actions">
+          <button class="btn btn--outline" onclick="goOnboardingStep(2)">戻る</button>
+          <button class="btn btn--primary btn--lg" id="completeOnboardingBtn" onclick="completeOnboarding()">登録を完了する</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============================================================ -->
+  <!-- Dashboard (shown after onboarding) -->
+  <!-- ============================================================ -->
+  <main id="dashboardPage" class="hidden">
+    <div class="dashboard">
+      <!-- Dashboard Header -->
+      <div class="dashboard__header">
+        <h2>ダッシュボード</h2>
+        <div class="dashboard__meta">
+          <span id="dashCompanyName"></span>
+          <span id="dashStatus" class="badge"></span>
+        </div>
+      </div>
+
+      <!-- Tab Navigation -->
+      <div class="dashboard__tabs">
+        <button class="tab active" data-tab="opportunities" onclick="switchTab('opportunities')">案件一覧</button>
+        <button class="tab" data-tab="settings" onclick="switchTab('settings')">設定</button>
+        <button class="tab" data-tab="subscription" onclick="switchTab('subscription')">プラン</button>
+      </div>
+
+      <!-- Opportunities Tab -->
+      <div class="tab-panel active" id="tab-opportunities">
+        <div class="filter-bar">
+          <select id="filterScore" class="input input--sm" onchange="loadOpportunities()">
+            <option value="0">全スコア</option>
+            <option value="40" selected>40%以上</option>
+            <option value="60">60%以上</option>
+            <option value="80">80%以上</option>
+          </select>
+          <select id="filterArea" class="input input--sm" onchange="loadOpportunities()">
+            <option value="">全エリア</option>
+          </select>
+          <span id="oppCount" class="filter-bar__count"></span>
+        </div>
+        <div id="opportunityList" class="opportunity-list">
+          <div class="empty-state">
+            <p>まだ案件がありません。</p>
+            <p>毎朝8:00に新しい案件がチェックされます。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Tab -->
+      <div class="tab-panel" id="tab-settings">
+        <div class="settings-section">
+          <h3>会社プロフィール</h3>
+          <div id="settingsProfile">
+            <!-- JS で描画 -->
+          </div>
+          <button class="btn btn--outline btn--sm" onclick="reanalyzeCompany()">URLを再分析</button>
+        </div>
+        <div class="settings-section">
+          <h3>通知設定</h3>
+          <label class="setting-row">
+            <span>メール通知</span>
+            <input type="checkbox" id="settingEmailNotify" checked onchange="saveSettings()">
+          </label>
+          <label class="setting-row">
+            <span>スコア閾値</span>
+            <input type="range" id="settingThreshold" min="0" max="100" value="40" onchange="saveSettings()">
+            <span id="thresholdValue">40%</span>
+          </label>
+        </div>
+        <div class="settings-section">
+          <h3>マッチングキーワード</h3>
+          <div id="keywordEditor">
+            <!-- JS で描画 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Subscription Tab -->
+      <div class="tab-panel" id="tab-subscription">
+        <div id="subscriptionInfo">
+          <!-- JS で描画 -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============================================================ -->
+  <!-- Login Modal -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay hidden" id="loginModal">
+    <div class="modal">
+      <button class="modal__close" onclick="hideLoginModal()">&times;</button>
+      <h2 id="loginModalTitle">ログイン</h2>
+      <form onsubmit="handleAuth(event)" class="auth-form">
+        <input type="email" id="authEmail" class="input" placeholder="メールアドレス" required>
+        <input type="password" id="authPassword" class="input" placeholder="パスワード" required minlength="6">
+        <div id="authError" class="error-msg hidden"></div>
+        <button type="submit" class="btn btn--primary btn--lg btn--full" id="authSubmitBtn">ログイン</button>
+      </form>
+      <button class="btn btn--google btn--full" onclick="loginWithGoogle()">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.26c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+        Googleで続ける
+      </button>
+      <div class="auth-switch">
+        <span id="authSwitchText">アカウントがない場合</span>
+        <button type="button" class="btn-link" id="authSwitchBtn" onclick="toggleAuthMode()">新規登録</button>
+      </div>
+      <button type="button" class="btn-link auth-reset" onclick="handlePasswordReset()">パスワードを忘れた方</button>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer__inner">
+      <p>公募ナビAI v1.0 &mdash; &copy; 2026 <a href="https://bantex.jp" target="_blank">bantex</a></p>
+      <div class="footer__links">
+        <a href="https://bantex.jp/terms.html" target="_blank">利用規約</a>
+        <a href="https://bantex.jp/privacy.html" target="_blank">プライバシーポリシー</a>
+        <a href="https://bantex.jp/tokushoho.html" target="_blank">特定商取引法</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
