@@ -18,7 +18,7 @@
       <div class="header__logo">
         <span class="header__icon">&#x1f4cb;</span>
         <span class="header__title">公募ナビAI</span>
-        <div class="header__badge">v2.0</div>
+        <div class="header__badge">v2.1</div>
       </div>
       <div class="header__actions" id="authArea">
         <button class="btn btn--outline btn--sm" id="loginBtn" onclick="showLoginModal()">ログイン</button>
@@ -524,10 +524,12 @@
     <div class="dashboard">
       <!-- Dashboard Header -->
       <div class="dashboard__header">
-        <h2>ダッシュボード</h2>
-        <div class="dashboard__meta">
-          <span id="dashCompanyName"></span>
-          <span id="dashStatus" class="badge"></span>
+        <div>
+          <h2>ダッシュボード</h2>
+          <div class="dashboard__meta">
+            <span id="dashCompanyName"></span>
+            <span id="dashStatus" class="badge"></span>
+          </div>
         </div>
       </div>
 
@@ -542,8 +544,8 @@
       <div class="tab-panel active" id="tab-opportunities">
         <div class="filter-bar">
           <select id="filterScore" class="input input--sm" onchange="loadOpportunities()">
-            <option value="0">全スコア</option>
-            <option value="40" selected>40%以上</option>
+            <option value="0" selected>全スコア（関連度順）</option>
+            <option value="40">40%以上</option>
             <option value="60">60%以上</option>
             <option value="80">80%以上</option>
           </select>
@@ -567,7 +569,23 @@
           <div id="settingsProfile">
             <!-- JS で描画 -->
           </div>
-          <button class="btn btn--outline btn--sm" onclick="reanalyzeCompany()">URLを再分析</button>
+        </div>
+        <div class="settings-section">
+          <h3>事業内容の再分析</h3>
+          <p style="color:var(--text-secondary);margin-bottom:12px;">URLまたはテキストで事業内容を再分析できます。</p>
+          <div class="input-mode-tabs">
+            <button class="input-mode-tab active" id="settingsTabUrl" onclick="switchSettingsInputMode('url')">URLで入力</button>
+            <button class="input-mode-tab" id="settingsTabText" onclick="switchSettingsInputMode('text')">テキストで入力</button>
+          </div>
+          <div id="settingsUrlGroup">
+            <input type="url" id="settingsUrlInput" placeholder="https://example.co.jp" class="input input--lg" style="margin-bottom:12px;">
+            <button class="btn btn--primary btn--sm" onclick="reanalyzeCompany('url')">URLで再分析</button>
+          </div>
+          <div id="settingsTextGroup" class="hidden">
+            <textarea id="settingsTextInput" class="input input--lg input--textarea" rows="5" placeholder="事業内容、提供サービス、強み、保有資格などを自由に記述してください（50文字以上）" style="margin-bottom:12px;"></textarea>
+            <button class="btn btn--primary btn--sm" onclick="reanalyzeCompany('text')">テキストで再分析</button>
+          </div>
+          <div id="settingsAnalyzeStatus" class="status-msg hidden" style="margin-top:8px;"></div>
         </div>
         <div class="settings-section">
           <h3>通知設定</h3>
@@ -577,8 +595,8 @@
           </label>
           <label class="setting-row">
             <span>スコア閾値</span>
-            <input type="range" id="settingThreshold" min="0" max="100" value="40" onchange="saveSettings()">
-            <span id="thresholdValue">40%</span>
+            <input type="range" id="settingThreshold" min="0" max="100" value="0" onchange="saveSettings()">
+            <span id="thresholdValue">0%</span>
           </label>
         </div>
         <div class="settings-section">
@@ -626,7 +644,7 @@
   <!-- Footer -->
   <footer class="footer">
     <div class="footer__inner">
-      <p>公募ナビAI v2.0 &mdash; &copy; 2026 <a href="https://bantex.jp" target="_blank">bantex</a></p>
+      <p>公募ナビAI v2.1 &mdash; &copy; 2026 <a href="https://bantex.jp" target="_blank">bantex</a></p>
       <div class="footer__links">
         <a href="https://bantex.jp/terms.html" target="_blank">利用規約</a>
         <a href="https://bantex.jp/privacy.html" target="_blank">プライバシーポリシー</a>

@@ -1,5 +1,5 @@
-// 公募ナビAI v2.0
-// LP + Onboarding + Dashboard
+// 公募ナビAI v2.1
+// LP + Onboarding + Dashboard（LP/ダッシュボード分離対応）
 
 // ---------------------------------------------------------------------------
 // Config
@@ -21,6 +21,7 @@ let companyProfile = null;
 let selectedPlan = "monthly";
 let authMode = "login"; // login | signup
 let inputMode = "url"; // url | text
+let userOnboarded = false;
 
 // ---------------------------------------------------------------------------
 // Init
@@ -82,9 +83,11 @@ function updateAuthUI() {
   const authArea = document.getElementById("authArea");
   if (currentUser) {
     const displayName = currentUser.user_metadata?.full_name || currentUser.email?.split("@")[0] || "ユーザー";
+    const currentPage = getCurrentPage();
     authArea.innerHTML = `
       <span class="header__user">${escapeHtml(displayName)}</span>
-      <button class="btn btn--outline btn--sm" onclick="showPage('dashboard')">ダッシュボード</button>
+      ${currentPage === "dashboard" ? `<button class="btn btn--outline btn--sm" onclick="showPage('landing')">トップページ</button>` : ""}
+      ${currentPage !== "dashboard" && userOnboarded ? `<button class="btn btn--primary btn--sm" onclick="showPage('dashboard')">ダッシュボード</button>` : ""}
       <button class="btn btn--outline btn--sm" onclick="logoutUser()">ログアウト</button>
     `;
   } else {
@@ -92,6 +95,12 @@ function updateAuthUI() {
       <button class="btn btn--outline btn--sm" onclick="showLoginModal()">ログイン</button>
     `;
   }
+}
+
+function getCurrentPage() {
+  if (!document.getElementById("dashboardPage").classList.contains("hidden")) return "dashboard";
+  if (!document.getElementById("onboardingPage").classList.contains("hidden")) return "onboarding";
+  return "landing";
 }
 
 function showLoginModal() {
@@ -200,6 +209,9 @@ function showPage(page) {
   if (page === "dashboard") {
     loadDashboard();
   }
+  // ページ切替時にヘッダーボタンを更新
+  updateAuthUI();
+  window.scrollTo(0, 0);
 }
 
 async function checkUserStatus() {
@@ -213,9 +225,10 @@ async function checkUserStatus() {
     const data = await resp.json();
 
     if (data.user) {
-      // User has completed onboarding
+      // User has completed onboarding - remember status but stay on current page
       companyProfile = data.profile;
-      showPage("dashboard");
+      userOnboarded = true;
+      updateAuthUI();
     }
     // else: user exists in auth but hasn't onboarded → stay on landing
   } catch {
@@ -679,8 +692,9 @@ function renderOpportunities(items) {
   if (items.length === 0) {
     list.innerHTML = `
       <div class="empty-state">
-        <p>条件に合う案件がありません。</p>
-        <p>毎朝8:00に新しい案件がチェックされます。</p>
+        <p>現在マッチする案件はまだありません。</p>
+        <p>AIが毎朝8:00に行政サイトをチェックし、新しい案件が見つかり次第こちらに表示されます。</p>
+        <p style="color:var(--text-muted);margin-top:8px;">初回スクリーニングには最大24時間かかる場合があります。</p>
       </div>
     `;
     return;
@@ -812,21 +826,26 @@ function renderDetailedAnalysis(a) {
 function loadSettings(profileData) {
   if (!profileData) return;
 
-  // Profile info
+  // Profile info - full display
   const settingsProfile = document.getElementById("settingsProfile");
   if (companyProfile) {
+    const p = companyProfile;
+    const companyUrl = profileData.user?.company_url || "";
     settingsProfile.innerHTML = `
-      <div class="profile-card__row"><span class="profile-card__label">会社名</span><span class="profile-card__value">${escapeHtml(companyProfile.company_name || "")}</span></div>
-      <div class="profile-card__row"><span class="profile-card__label">事業分野</span><span class="profile-card__value">${escapeHtml((companyProfile.business_areas || []).join("、"))}</span></div>
-      <div class="profile-card__row"><span class="profile-card__label">URL</span><span class="profile-card__value">${escapeHtml(profileData.user?.company_url || "")}</span></div>
+      <div class="profile-card__row"><span class="profile-card__label">会社名</span><span class="profile-card__value">${escapeHtml(p.company_name || "")}</span></div>
+      <div class="profile-card__row"><span class="profile-card__label">所在地</span><span class="profile-card__value">${escapeHtml(p.location || "")}</span></div>
+      <div class="profile-card__row"><span class="profile-card__label">事業分野</span><span class="profile-card__value">${escapeHtml((p.business_areas || []).join("、"))}</span></div>
+      <div class="profile-card__row"><span class="profile-card__label">提供サービス</span><span class="profile-card__value">${escapeHtml((p.services || []).join("、"))}</span></div>
+      <div class="profile-card__row"><span class="profile-card__label">強み</span><span class="profile-card__value">${escapeHtml((p.strengths || []).join("、"))}</span></div>
+      ${companyUrl ? `<div class="profile-card__row"><span class="profile-card__label">URL</span><span class="profile-card__value"><a href="${escapeHtml(companyUrl)}" target="_blank" style="color:var(--accent)">${escapeHtml(companyUrl)}</a></span></div>` : ""}
     `;
   }
 
   // Notification settings
   const user = profileData.user || {};
   document.getElementById("settingEmailNotify").checked = user.email_notify !== false;
-  document.getElementById("settingThreshold").value = user.notification_threshold || 40;
-  document.getElementById("thresholdValue").textContent = `${user.notification_threshold || 40}%`;
+  document.getElementById("settingThreshold").value = user.notification_threshold || 0;
+  document.getElementById("thresholdValue").textContent = `${user.notification_threshold || 0}%`;
 
   // Keywords
   renderKeywordEditor();
@@ -897,21 +916,68 @@ async function saveSettings() {
   });
 }
 
-async function reanalyzeCompany() {
-  const url = prompt("会社URLを入力してください:", "");
-  if (!url) return;
-  const token = await getAccessToken();
-  const resp = await fetch(`${WORKER_BASE}/api/analyze-company`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ url: url.startsWith("http") ? url : "https://" + url }),
-  });
-  if (resp.ok) {
-    companyProfile = await resp.json();
-    alert("再分析が完了しました。");
-    loadDashboard();
+function switchSettingsInputMode(mode) {
+  const urlGroup = document.getElementById("settingsUrlGroup");
+  const textGroup = document.getElementById("settingsTextGroup");
+  const tabUrl = document.getElementById("settingsTabUrl");
+  const tabText = document.getElementById("settingsTabText");
+
+  if (mode === "url") {
+    urlGroup.classList.remove("hidden");
+    textGroup.classList.add("hidden");
+    tabUrl.classList.add("active");
+    tabText.classList.remove("active");
   } else {
-    alert("再分析に失敗しました。");
+    urlGroup.classList.add("hidden");
+    textGroup.classList.remove("hidden");
+    tabUrl.classList.remove("active");
+    tabText.classList.add("active");
+  }
+}
+
+async function reanalyzeCompany(mode) {
+  const statusEl = document.getElementById("settingsAnalyzeStatus");
+  let requestBody;
+
+  if (mode === "text") {
+    const text = document.getElementById("settingsTextInput").value.trim();
+    if (!text || text.length < 50) { alert("事業内容を50文字以上入力してください"); return; }
+    requestBody = { text };
+  } else {
+    const url = document.getElementById("settingsUrlInput").value.trim();
+    if (!url) { alert("URLを入力してください"); return; }
+    requestBody = { url: url.startsWith("http") ? url : "https://" + url };
+  }
+
+  statusEl.textContent = "AIが分析中...";
+  statusEl.classList.remove("hidden");
+  statusEl.style.color = "";
+
+  try {
+    const token = await getAccessToken();
+    const resp = await fetch(`${WORKER_BASE}/api/analyze-company`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!resp.ok) throw new Error("分析に失敗しました");
+
+    companyProfile = await resp.json();
+
+    // Save updated profile to server
+    await fetch(`${WORKER_BASE}/api/user/profile`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(companyProfile),
+    });
+
+    statusEl.textContent = "再分析が完了しました";
+    statusEl.style.color = "var(--success)";
+    loadDashboard();
+  } catch (err) {
+    statusEl.textContent = `エラー: ${err.message}`;
+    statusEl.style.color = "var(--danger)";
   }
 }
 
