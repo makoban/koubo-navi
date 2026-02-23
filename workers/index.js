@@ -355,6 +355,9 @@ async function handlePutAreas(request, env) {
 
   const { area_ids } = body;
   if (!Array.isArray(area_ids)) return errorResponse("area_ids は配列で指定してください", 400);
+  if (area_ids.length < 1 || area_ids.length > 3) {
+    return errorResponse("エリアは1〜3個まで選択できます", 400);
+  }
 
   // 既存のエリア設定を全てinactiveに
   await supabaseRequest(
@@ -877,6 +880,9 @@ async function handleRegisterUser(request, env) {
 
   // エリア設定を保存
   if (Array.isArray(area_ids)) {
+    if (area_ids.length < 1 || area_ids.length > 3) {
+      return errorResponse("エリアは1〜3個まで選択できます", 400);
+    }
     // 既存を無効化
     await supabaseRequest(
       `/user_areas?user_id=eq.${user_id}`, "PATCH",

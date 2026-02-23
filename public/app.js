@@ -9,6 +9,7 @@ const WORKER_BASE = "https://koubo-navi-proxy.ai-fudosan.workers.dev";
 const SUPABASE_URL = "https://ypyrjsdotkeyvzequdez.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_l5yNWlXOZAHABwlbEalGng_R8zioydf";
 const GOOGLE_CLIENT_ID = "318879736677-7mhvrrr6fq4d8ngkaahlulb9nu64hskp.apps.googleusercontent.com";
+const MAX_AREAS = 3;
 
 // ---------------------------------------------------------------------------
 // State
@@ -421,26 +422,44 @@ async function loadAreas() {
     }
 
     container.innerHTML = html;
+    updateAreaCount();
   } catch {
     document.getElementById("areaSelector").innerHTML = "<p>エリア情報の取得に失敗しました。</p>";
   }
 }
 
+function updateAreaCount() {
+  const checked = document.querySelectorAll("#areaSelector input:checked").length;
+  const countEl = document.getElementById("areaCount");
+  if (countEl) countEl.textContent = checked;
+
+  document.querySelectorAll("#areaSelector input[type=checkbox]").forEach(cb => {
+    if (!cb.checked && checked >= MAX_AREAS) {
+      cb.disabled = true;
+      cb.closest(".area-checkbox")?.classList.add("area-checkbox--disabled");
+    } else {
+      cb.disabled = false;
+      cb.closest(".area-checkbox")?.classList.remove("area-checkbox--disabled");
+    }
+  });
+}
+
 function toggleAreaCheckbox(el) {
   const cb = el.querySelector("input");
+  if (!cb.checked) {
+    const checked = document.querySelectorAll("#areaSelector input:checked").length;
+    if (checked >= MAX_AREAS) {
+      alert(`エリアは最大${MAX_AREAS}つまで選択できます`);
+      return;
+    }
+  }
   cb.checked = !cb.checked;
   el.classList.toggle("checked", cb.checked);
+  updateAreaCount();
 }
 
 function selectPlan(plan) {
   selectedPlan = plan;
-}
-
-function selectAllAreas() {
-  document.querySelectorAll("#areaSelector input[type=checkbox]").forEach(cb => {
-    cb.checked = true;
-    cb.closest(".area-checkbox")?.classList.add("checked");
-  });
 }
 
 function deselectAllAreas() {
@@ -448,6 +467,7 @@ function deselectAllAreas() {
     cb.checked = false;
     cb.closest(".area-checkbox")?.classList.remove("checked");
   });
+  updateAreaCount();
 }
 
 async function registerAndGoToPayment() {
@@ -456,6 +476,10 @@ async function registerAndGoToPayment() {
 
   if (areaIds.length === 0) {
     alert("少なくとも1つのエリアを選択してください");
+    return;
+  }
+  if (areaIds.length > MAX_AREAS) {
+    alert(`エリアは最大${MAX_AREAS}つまで選択できます`);
     return;
   }
 

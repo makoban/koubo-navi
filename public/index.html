@@ -160,7 +160,7 @@
           <div class="step-card__number">2</div>
           <div class="step-card__icon">&#x1F916;</div>
           <h3>AIが事業内容を解析</h3>
-          <p>AIがウェブサイトを読み取り、事業内容・強み・対応可能な案件タイプを自動で判定します。</p>
+          <p>AIがウェブサイトを読み取り、事業内容・強み・対応可能な案件タイプを自動で判定。チェックしたいエリア（最大3つ）を選んで設定完了です。</p>
         </div>
         <div class="step-card">
           <div class="step-card__number">3</div>
@@ -338,7 +338,7 @@
           <div class="pricing__price"><span class="pricing__yen">&#165;</span>2,980<span class="pricing__period">/月</span></div>
           <ul class="pricing__features">
             <li>7日間無料トライアル</li>
-            <li>全国47都道府県対応</li>
+            <li>全国47都道府県対応（最大3エリア）</li>
             <li>毎日自動チェック + メール通知</li>
             <li>最大100件のランキング表示</li>
             <li>AI詳細分析レポート</li>
@@ -353,7 +353,7 @@
           <ul class="pricing__features">
             <li>7日間無料トライアル</li>
             <li>月額換算 &#165;2,483</li>
-            <li>全機能利用可能</li>
+            <li>全国47都道府県対応（最大3エリア）</li>
             <li>最大100件のランキング表示</li>
             <li>AI詳細分析レポート</li>
             <li>いつでも解約可能</li>
@@ -387,6 +387,10 @@
         <details class="faq__item">
           <summary>解約はいつでもできますか？</summary>
           <p>はい。マイページからいつでも解約できます。解約後も契約期間の終了まではサービスをご利用いただけます。</p>
+        </details>
+        <details class="faq__item">
+          <summary>エリアは何個まで選べますか？</summary>
+          <p>最大3エリアまで選択できます。AIが各エリアの行政サイトを毎日チェックし、マッチする案件をお届けします。エリアの変更はいつでもマイページから可能です。</p>
         </details>
         <details class="faq__item">
           <summary>無料トライアル中の制限はありますか？</summary>
@@ -461,9 +465,11 @@
       <!-- Step 2: Area Selection -->
       <div class="onboarding__panel hidden" id="obStep2">
         <h2>チェックしたいエリアを選択してください</h2>
-        <p>選択したエリアの公募・入札情報を毎日自動でチェックします。</p>
+        <p>選択したエリアの公募・入札情報を毎日自動でチェックします。<strong>最大3エリアまで</strong>選択できます。</p>
+        <div class="area-selection-info">
+          選択済み: <strong id="areaCount">0</strong> / 3
+        </div>
         <div class="area-selector-controls">
-          <button class="btn btn--outline btn--sm" onclick="selectAllAreas()">全選択</button>
           <button class="btn btn--outline btn--sm" onclick="deselectAllAreas()">全解除</button>
         </div>
         <div class="area-selector" id="areaSelector">

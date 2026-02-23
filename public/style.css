@@ -1050,6 +1050,19 @@ body {
 .area-checkbox.checked { border-color: var(--accent); background: var(--accent-light); }
 .area-checkbox__info h4 { font-size: 15px; }
 .area-checkbox__info p { font-size: 12px; color: var(--text-muted); }
+.area-checkbox--disabled { opacity: 0.4; pointer-events: none; }
+
+.area-selection-info {
+  text-align: center;
+  margin-bottom: 16px;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+.area-selection-info strong {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 18px;
+}
 
 /* ====== Dashboard ====== */
 .dashboard {
