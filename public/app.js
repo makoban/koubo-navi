@@ -519,6 +519,7 @@ async function registerAndGoToPayment() {
 
     if (!resp.ok) throw new Error("登録に失敗しました");
 
+    userOnboarded = true;
     goOnboardingStep(3);
   } catch (err) {
     alert(`エラー: ${err.message}`);
@@ -620,6 +621,7 @@ async function verifyCheckout(sessionId) {
 
 async function loadDashboard() {
   if (!currentUser) return;
+  userOnboarded = true;
 
   try {
     const token = await getAccessToken();
