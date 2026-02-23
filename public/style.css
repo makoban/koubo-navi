@@ -34,6 +34,7 @@ body {
   color: var(--text-primary);
   line-height: 1.7;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .hidden { display: none !important; }
