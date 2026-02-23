@@ -207,6 +207,7 @@ function showPage(page) {
   document.getElementById("dashboardPage").classList.toggle("hidden", page !== "dashboard");
 
   if (page === "dashboard") {
+    userOnboarded = true;
     loadDashboard();
   }
   // ページ切替時にヘッダーボタンを更新
