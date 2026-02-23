@@ -23,8 +23,8 @@ const BASE_URL = `http://localhost:${PORT}`;
 const WORKER_BASE = "https://koubo-navi-proxy.ai-fudosan.workers.dev";
 const SUPABASE_URL = "https://ypyrjsdotkeyvzequdez.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_l5yNWlXOZAHABwlbEalGng_R8zioydf";
-const SUPABASE_SERVICE_KEY = "sb_secret_lVjCeEoWmOph25CqFtI3gg_mu3oLdov";
-const STRIPE_TEST_KEY = "sk_test_51SlP0L1TYnppSLqNuOsvoliBHpNBRQUdcQhBEu1BKpYaR0d0EE0Z5YFErGnUKwz6aGEWo3O7cM0yPGp68MHSRGaY00TZb0F4cC";
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "";
+const STRIPE_TEST_KEY = process.env.STRIPE_TEST_KEY || "";
 
 const TEST_EMAIL = `deep_test_${Date.now()}@test.bantex.jp`;
 const TEST_PASSWORD = "DeepTest123!";

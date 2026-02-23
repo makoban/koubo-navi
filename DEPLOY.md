@@ -69,9 +69,9 @@ https://koubo-navi.bantex.jp/
 ### 環境変数
 
 ```
-GEMINI_API_KEY=AIzaSyCeATGt0trXoYdhubXE-RYPELsWL1wlkCE
+GEMINI_API_KEY=（CLAUDE.mdまたはWorker secretsで確認）
 SUPABASE_URL=https://ypyrjsdotkeyvzequdez.supabase.co
-SUPABASE_SERVICE_KEY=sb_secret_lVjCeEoWmOph25CqFtI3gg_mu3oLdov
+SUPABASE_SERVICE_KEY=（CLAUDE.mdまたはWorker secretsで確認）
 RESEND_API_KEY=（Resendアカウント作成後に設定）
 FROM_EMAIL=公募ナビAI <noreply@bantex.jp>
 ```

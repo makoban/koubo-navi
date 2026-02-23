@@ -13,9 +13,9 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # 環境変数設定（ローカルテスト用）
-os.environ.setdefault("GEMINI_API_KEY", "AIzaSyCeATGt0trXoYdhubXE-RYPELsWL1wlkCE")
-os.environ.setdefault("SUPABASE_URL", "https://ypyrjsdotkeyvzequdez.supabase.co")
-os.environ.setdefault("SUPABASE_SERVICE_KEY", "sb_secret_lVjCeEoWmOph25CqFtI3gg_mu3oLdov")
+os.environ.setdefault("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
+os.environ.setdefault("SUPABASE_URL", os.environ.get("SUPABASE_URL", ""))
+os.environ.setdefault("SUPABASE_SERVICE_KEY", os.environ.get("SUPABASE_SERVICE_KEY", ""))
 
 import config
 import db

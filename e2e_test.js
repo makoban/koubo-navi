@@ -27,7 +27,7 @@ const BASE_URL = `http://localhost:${PORT}`;
 const WORKER_BASE = "https://koubo-navi-proxy.ai-fudosan.workers.dev";
 const SUPABASE_URL = "https://ypyrjsdotkeyvzequdez.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_l5yNWlXOZAHABwlbEalGng_R8zioydf";
-const STRIPE_TEST_KEY = "sk_test_51SlP0L1TYnppSLqNuOsvoliBHpNBRQUdcQhBEu1BKpYaR0d0EE0Z5YFErGnUKwz6aGEWo3O7cM0yPGp68MHSRGaY00TZb0F4cC";
+const STRIPE_TEST_KEY = process.env.STRIPE_TEST_KEY || "";
 
 // テスト用アカウント（ユニークにするため timestamp を付与）
 const TEST_EMAIL = `test_koubo_${Date.now()}@test.bantex.jp`;
@@ -297,10 +297,24 @@ async function runBrowserTests(accessToken) {
 
     // -- Test: Hero Section --
     const heroTitle = await page.$eval(".hero__title", el => el.textContent.trim());
-    report("Hero Title", heroTitle.includes("URLを入れるだけ"), heroTitle);
+    report("Hero Title", heroTitle.includes("公募・入札案件"), heroTitle);
+
+    const heroLabel = await page.$(".hero__label");
+    report("Hero Label Exists", !!heroLabel);
 
     const heroBtn = await page.$(".hero .btn--primary");
     report("Hero CTA Button Exists", !!heroBtn);
+
+    // -- Test: Proof Bar --
+    const proofItems = await page.$$(".proof-bar__item");
+    report("Proof Bar Items", proofItems.length === 4, `count: ${proofItems.length}`);
+
+    // -- Test: Service Sample (Browser Mockup) --
+    const mockup = await page.$(".mockup");
+    report("Browser Mockup Exists", !!mockup);
+
+    const mockupOpps = await page.$$(".mockup-opp");
+    report("Mockup Opportunity Cards (3)", mockupOpps.length === 3, `count: ${mockupOpps.length}`);
 
     // -- Test: Steps Section --
     const stepCards = await page.$$(".step-card");
@@ -309,6 +323,16 @@ async function runBrowserTests(accessToken) {
     // -- Test: Comparison Section --
     const compCards = await page.$$(".comparison__card");
     report("Comparison Cards (Before/After)", compCards.length === 2, `count: ${compCards.length}`);
+
+    // -- Test: Competitor Comparison Table --
+    const compTable = await page.$(".competitor__table");
+    report("Competitor Table Exists", !!compTable);
+
+    const compRows = await page.$$(".competitor__table tbody tr");
+    report("Competitor Table Rows (8)", compRows.length === 8, `count: ${compRows.length}`);
+
+    const selfCells = await page.$$(".competitor__self");
+    report("Self-highlight Cells Exist", selfCells.length >= 8, `count: ${selfCells.length}`);
 
     // -- Test: Sample Score Cards --
     const sampleCards = await page.$$(".sample-card");
