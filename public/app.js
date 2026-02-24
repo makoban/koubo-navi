@@ -1,4 +1,4 @@
-// 公募ナビAI v2.1
+// 公募ナビAI v2.4
 // LP + Onboarding + Dashboard（エリア管理・フィルター改善）
 
 // ---------------------------------------------------------------------------
@@ -564,7 +564,7 @@ async function startTrialCheckout() {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        plan: selectedPlan,
+        plan: "monthly",
         success_url: window.location.origin + window.location.pathname + "?session_id={CHECKOUT_SESSION_ID}",
         cancel_url: window.location.origin + window.location.pathname,
       }),
@@ -743,6 +743,7 @@ async function loadOpportunities() {
 function renderOpportunities(items) {
   const list = document.getElementById("opportunityList");
   const countEl = document.getElementById("oppCount");
+  const visibleCount = (currentTier === "free") ? Math.min(5, items.length) : items.length;
   countEl.textContent = `${items.length}件`;
 
   if (items.length === 0) {
@@ -765,9 +766,11 @@ function renderOpportunities(items) {
     const rec = item.recommendation || "";
     const rank = item.rank_position || (idx + 1);
     const oppId = item.opportunity_id || opp.id || "";
+    const isBlurred = (currentTier === "free") && idx >= visibleCount;
 
     return `
-      <div class="opp-card" id="opp-${escapeHtml(oppId)}">
+      <div class="opp-card ${isBlurred ? 'opp-card--blurred' : ''}" id="opp-${escapeHtml(oppId)}">
+        ${isBlurred ? '<div class="opp-card__blur-overlay" onclick="switchTab(\'subscription\')"><span>有料プランで表示</span></div>' : ''}
         <div class="opp-card__rank">#${rank}</div>
         <div class="opp-card__score opp-card__score--${scoreClass}">${scoreLabel}</div>
         <div class="opp-card__body">
@@ -789,11 +792,11 @@ function renderOpportunities(items) {
   }).join("");
 
   // Upgrade CTA for free tier
-  if (currentTier === "free" && totalUnfiltered > items.length) {
+  if (currentTier === "free" && items.length > visibleCount) {
     html += `
       <div class="upgrade-cta">
-        <p>残り <strong>${totalUnfiltered - items.length}件</strong> の案件があります</p>
-        <p>有料プランにアップグレードすると最大100件まで確認できます</p>
+        <p><strong>${items.length - visibleCount}件</strong>の案件がぼかし表示されています</p>
+        <p>有料プランにアップグレードすると全件確認できます</p>
         <button class="btn btn--primary" onclick="switchTab('subscription')">プランをアップグレード</button>
       </div>
     `;
@@ -1219,17 +1222,18 @@ function renderSubscription(data) {
     // No subscription yet
     container.innerHTML = `
       <div class="sub-card">
-        <div class="sub-card__plan">${status === "trial" ? "無料トライアル中" : "未登録"}</div>
+        <div class="sub-card__plan">${status === "trial" ? "無料トライアル中" : "無料プラン"}</div>
         ${trialEnd ? `<div class="sub-card__info">トライアル終了日: ${new Date(trialEnd).toLocaleDateString("ja-JP")}</div>` : ""}
+        <p class="sub-card__desc">無料プラン: 上位5件表示 + 30件ぼかし表示</p>
         <button class="btn btn--primary btn--lg" onclick="startCheckout('monthly')">月額プラン ¥2,980 で開始</button>
-        <button class="btn btn--outline btn--lg" style="margin-top:12px" onclick="startCheckout('yearly')">年額プラン ¥29,800 で開始</button>
+        ${status === "trial" ? `<button class="btn btn--danger" style="margin-top:12px" onclick="cancelSubscription()">解約する</button>` : ""}
       </div>
     `;
     return;
   }
 
-  const planLabel = sub.plan === "yearly" ? "年額プラン" : "月額プラン";
-  const priceLabel = sub.plan === "yearly" ? "¥29,800/年" : "¥2,980/月";
+  const planLabel = "月額プラン";
+  const priceLabel = "¥2,980/月";
   const statusLabel = sub.status === "active" ? "有効" :
     sub.status === "cancelling" ? "解約予定" :
     sub.status === "past_due" ? "支払い遅延" : sub.status;
@@ -1272,7 +1276,7 @@ async function startCheckout(plan) {
 }
 
 async function cancelSubscription() {
-  if (!confirm("サブスクリプションを解約しますか？\n契約期間の終了までサービスは利用できます。")) return;
+  if (!confirm("本当に解約しますか？\n\n・契約期間の終了まではサービスを引き続きご利用いただけます\n・解約後は無料プラン（5件表示）に移行します")) return;
   const token = await getAccessToken();
   const resp = await fetch(`${WORKER_BASE}/api/cancel-subscription`, {
     method: "POST",

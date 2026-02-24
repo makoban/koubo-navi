@@ -393,7 +393,7 @@ async function handleGetOpportunities(request, env) {
   const trialEnd = user.trial_ends_at ? new Date(user.trial_ends_at) : null;
   const isPaid = user.status === "active" ||
     (user.status === "trial" && trialEnd && trialEnd > now);
-  const tierMaxResults = isPaid ? 100 : 10;
+  const tierMaxResults = isPaid ? 100 : 35;  // free: 5表示 + 30ぼかし
   const tier = isPaid ? "paid" : "free";
 
   const url = new URL(request.url);
@@ -419,7 +419,13 @@ async function handleGetOpportunities(request, env) {
     "GET", null, env
   );
   if (!oppResult.ok) return errorResponse("案件取得失敗", 500);
-  const allOpps = oppResult.data || [];
+
+  // 期限切れの案件を除外
+  const today = new Date().toISOString().split("T")[0];
+  const allOpps = (oppResult.data || []).filter(opp => {
+    if (!opp.deadline) return true;
+    return opp.deadline >= today;
+  });
 
   // 3. user_opportunities からスコア情報を取得
   const uoResult = await supabaseRequest(
@@ -481,6 +487,7 @@ async function handleGetOpportunities(request, env) {
     total_unfiltered: totalUnfiltered,
     tier,
     max_results: tierMaxResults,
+    visible_count: isPaid ? items.length : Math.min(5, items.length),
   });
 }
 
@@ -665,7 +672,7 @@ async function handleCheckout(request, env) {
   try { body = await request.json(); } catch { return errorResponse("不正なJSON", 400); }
 
   const { plan, success_url, cancel_url } = body;
-  const priceId = plan === "yearly" ? env.STRIPE_PRICE_YEARLY : env.STRIPE_PRICE_MONTHLY;
+  const priceId = env.STRIPE_PRICE_MONTHLY;
   if (!priceId) return errorResponse("Price IDが設定されていません", 500);
 
   const origin = request.headers.get("Origin") ?? "https://koubo-navi.bantex.jp";
@@ -1013,7 +1020,7 @@ ${oppList}
 ]
 
 match_scoreは0-100の整数で、企業と案件の適合度を評価してください。
-scoreが30未満の案件は配列に含めないでください。`;
+`;
 
         const geminiUrl = `${GEMINI_API_BASE}/v1beta/models/gemini-2.0-flash:generateContent?key=${env.GEMINI_API_KEY}`;
         try {
@@ -1034,7 +1041,7 @@ scoreが30未満の案件は配列に含めないでください。`;
 
             for (const m of matches) {
               const oppIdx = (m.index || 0) - 1;
-              if (oppIdx >= 0 && oppIdx < batch.length && m.match_score >= 30) {
+              if (oppIdx >= 0 && oppIdx < batch.length && m.match_score >= 0) {
                 allMatches.push({
                   user_id,
                   opportunity_id: batch[oppIdx].id,
