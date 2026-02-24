@@ -1,5 +1,5 @@
-// 公募ナビAI v2.2
-// LP + Onboarding + Dashboard（データ先行型バッチ対応）
+// 公募ナビAI v2.3
+// LP + Onboarding + Dashboard（エリア管理・フィルター改善）
 
 // ---------------------------------------------------------------------------
 // Config
@@ -656,18 +656,23 @@ async function loadDashboard() {
     statusEl.textContent = userStatus === "active" ? "有料プラン" : userStatus === "trial" ? "無料トライアル" : userStatus;
     statusEl.className = `badge badge--${userStatus}`;
 
-    // Load filter options + area names for info panel
+    // Load all areas for name resolution
     const areasResp = await fetch(`${WORKER_BASE}/api/areas`);
     const areasData = await areasResp.json();
     const allAreas = areasData.areas || [];
-    const filterArea = document.getElementById("filterArea");
-    filterArea.innerHTML = '<option value="">全エリア</option>' +
-      allAreas.map(a => `<option value="${a.area_id}">${a.area_name}</option>`).join("");
-
-    // Info panel: 登録エリア & プロフィール要約
-    const userAreaIds = profileData.areas || [];
     const areaNameMap = {};
     allAreas.forEach(a => { areaNameMap[a.area_id] = a.area_name; });
+
+    // Filter options: 登録エリアのみ表示
+    const userAreaIds = profileData.areas || [];
+    const filterArea = document.getElementById("filterArea");
+    const userAreaOptions = userAreaIds
+      .map(id => ({ id, name: areaNameMap[id] || id }))
+      .filter(a => a.name);
+    filterArea.innerHTML = '<option value="">全エリア</option>' +
+      userAreaOptions.map(a => `<option value="${a.id}">${a.name}</option>`).join("");
+
+    // Info panel: 登録エリア & プロフィール要約
     const userAreaNames = userAreaIds.map(id => areaNameMap[id] || id);
     document.getElementById("dashAreas").textContent = userAreaNames.length > 0
       ? userAreaNames.join("、") : "未設定";
@@ -885,6 +890,9 @@ function loadSettings(profileData) {
 
   // Keywords
   renderKeywordEditor();
+
+  // Area editor
+  renderSettingsAreas(profileData);
 }
 
 function renderKeywordEditor() {
@@ -935,6 +943,156 @@ async function saveKeywords(keywords) {
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ matching_keywords: keywords }),
   });
+}
+
+// ---------------------------------------------------------------------------
+// Settings: Area Editor
+// ---------------------------------------------------------------------------
+
+let _allAreasCache = [];
+let _userAreaIdsCache = [];
+
+async function renderSettingsAreas(profileData) {
+  const container = document.getElementById("settingsAreaEditor");
+  if (!container) return;
+
+  _userAreaIdsCache = profileData?.areas || [];
+
+  // Load all areas if not cached
+  if (_allAreasCache.length === 0) {
+    try {
+      const resp = await fetch(`${WORKER_BASE}/api/areas`);
+      const data = await resp.json();
+      _allAreasCache = data.areas || [];
+    } catch {
+      container.innerHTML = "<p>エリア情報の取得に失敗しました。</p>";
+      return;
+    }
+  }
+
+  const areaMap = {};
+  _allAreasCache.forEach(a => { areaMap[a.area_id] = a; });
+
+  // Current areas display
+  const currentAreaNames = _userAreaIdsCache.map(id => areaMap[id]?.area_name || id);
+
+  let html = `<div class="settings-area-current">
+    <span class="settings-area-label">現在の登録エリア:</span>
+    <div class="settings-area-tags">
+      ${currentAreaNames.length > 0
+        ? currentAreaNames.map(name => `<span class="keyword-tag">${escapeHtml(name)}</span>`).join("")
+        : '<span style="color:var(--text-muted)">未設定</span>'}
+    </div>
+    <button class="btn btn--outline btn--sm" onclick="toggleAreaEditor()" id="areaEditorToggleBtn" style="margin-top:12px;">エリアを変更する</button>
+  </div>`;
+
+  // Area selector (hidden by default)
+  html += `<div id="settingsAreaSelector" class="hidden" style="margin-top:16px;">
+    <p style="color:var(--text-secondary);margin-bottom:8px;">最大3エリアまで選択できます。</p>
+    <div class="settings-area-count">選択済み: <strong id="settingsAreaCount">${_userAreaIdsCache.length}</strong> / 3</div>`;
+
+  for (const [regionName, areaIds] of Object.entries(REGION_MAP)) {
+    const regionAreas = areaIds.filter(id => areaMap[id]);
+    if (regionAreas.length === 0) continue;
+    html += `<div class="area-region-group area-region-group--settings">
+      <div class="area-region-group__title">${escapeHtml(regionName)}</div>
+      <div class="area-region-group__items">`;
+    for (const areaId of regionAreas) {
+      const area = areaMap[areaId];
+      const isChecked = _userAreaIdsCache.includes(areaId);
+      const checkedAttr = isChecked ? "checked" : "";
+      const checkedClass = isChecked ? "checked" : "";
+      html += `<label class="area-checkbox ${checkedClass}" onclick="toggleSettingsAreaCheckbox(this)">
+        <input type="checkbox" value="${escapeHtml(area.area_id)}" ${checkedAttr}>
+        <div class="area-checkbox__info">
+          <h4>${escapeHtml(area.area_name)}</h4>
+        </div>
+      </label>`;
+    }
+    html += `</div></div>`;
+  }
+
+  html += `<div style="margin-top:16px;display:flex;gap:8px;">
+    <button class="btn btn--primary btn--sm" onclick="saveSettingsAreas()">エリアを保存</button>
+    <button class="btn btn--outline btn--sm" onclick="toggleAreaEditor()">キャンセル</button>
+  </div>
+  <div id="settingsAreaStatus" class="status-msg hidden" style="margin-top:8px;"></div>
+  </div>`;
+
+  container.innerHTML = html;
+  updateSettingsAreaCount();
+}
+
+function toggleAreaEditor() {
+  const selector = document.getElementById("settingsAreaSelector");
+  if (!selector) return;
+  selector.classList.toggle("hidden");
+  const btn = document.getElementById("areaEditorToggleBtn");
+  if (btn) btn.textContent = selector.classList.contains("hidden") ? "エリアを変更する" : "閉じる";
+}
+
+function toggleSettingsAreaCheckbox(el) {
+  const cb = el.querySelector("input");
+  if (!cb.checked) {
+    const checked = document.querySelectorAll("#settingsAreaSelector input:checked").length;
+    if (checked >= MAX_AREAS) {
+      alert(`エリアは最大${MAX_AREAS}つまで選択できます`);
+      return;
+    }
+  }
+  cb.checked = !cb.checked;
+  el.classList.toggle("checked", cb.checked);
+  updateSettingsAreaCount();
+}
+
+function updateSettingsAreaCount() {
+  const checked = document.querySelectorAll("#settingsAreaSelector input:checked").length;
+  const countEl = document.getElementById("settingsAreaCount");
+  if (countEl) countEl.textContent = checked;
+
+  document.querySelectorAll("#settingsAreaSelector input[type=checkbox]").forEach(cb => {
+    if (!cb.checked && checked >= MAX_AREAS) {
+      cb.disabled = true;
+      cb.closest(".area-checkbox")?.classList.add("area-checkbox--disabled");
+    } else {
+      cb.disabled = false;
+      cb.closest(".area-checkbox")?.classList.remove("area-checkbox--disabled");
+    }
+  });
+}
+
+async function saveSettingsAreas() {
+  const areaIds = Array.from(document.querySelectorAll("#settingsAreaSelector input:checked"))
+    .map(cb => cb.value);
+  const statusEl = document.getElementById("settingsAreaStatus");
+
+  if (areaIds.length === 0) {
+    alert("少なくとも1つのエリアを選択してください");
+    return;
+  }
+
+  statusEl.textContent = "保存中...";
+  statusEl.classList.remove("hidden");
+  statusEl.style.color = "";
+
+  try {
+    const token = await getAccessToken();
+    const resp = await fetch(`${WORKER_BASE}/api/user/areas`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ area_ids: areaIds }),
+    });
+    if (!resp.ok) throw new Error("保存に失敗しました");
+
+    statusEl.textContent = "エリアを更新しました";
+    statusEl.style.color = "var(--success)";
+
+    // Reload dashboard to refresh filter and info panel
+    setTimeout(() => { loadDashboard(); }, 800);
+  } catch (err) {
+    statusEl.textContent = `エラー: ${err.message}`;
+    statusEl.style.color = "var(--danger)";
+  }
 }
 
 async function saveSettings() {

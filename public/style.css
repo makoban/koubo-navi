@@ -1458,6 +1458,43 @@ body {
   line-height: 1;
 }
 
+/* ====== Settings Area Editor ====== */
+.settings-area-current { margin-bottom: 8px; }
+.settings-area-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: 8px;
+}
+.settings-area-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.settings-area-count {
+  text-align: center;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.settings-area-count strong {
+  color: var(--accent);
+  font-weight: 700;
+}
+.area-region-group--settings {
+  margin-bottom: 12px;
+}
+.area-region-group--settings .area-region-group__items {
+  gap: 6px;
+}
+.area-region-group--settings .area-checkbox {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.area-region-group--settings .area-checkbox h4 {
+  font-size: 13px;
+}
+
 /* ====== Responsive ====== */
 @media (max-width: 768px) {
   .hero__title { font-size: 28px; }
