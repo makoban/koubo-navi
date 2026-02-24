@@ -418,7 +418,7 @@ async function handleGetOpportunities(request, env) {
   // 2. 登録エリアの全案件を opportunities テーブルから取得
   const areaFilter = userAreaIds.map(id => encodeURIComponent(id)).join(",");
   const oppResult = await supabaseRequest(
-    `/opportunities?area_id=in.(${areaFilter})&select=*&order=created_at.desc&limit=500`,
+    `/opportunities?area_id=in.(${areaFilter})&select=*&order=scraped_at.desc&limit=500`,
     "GET", null, env
   );
   if (!oppResult.ok) return errorResponse("案件取得失敗", 500);
