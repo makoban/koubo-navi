@@ -360,20 +360,17 @@ async function handlePutAreas(request, env) {
     return errorResponse("エリアは1〜3個まで選択できます", 400);
   }
 
-  // 既存のエリア設定を全てinactiveに
+  // 既存のエリア設定を全て削除
   await supabaseRequest(
-    `/user_areas?user_id=eq.${user_id}`, "PATCH",
-    { active: false }, env, { prefer: "return=minimal" }
+    `/user_areas?user_id=eq.${user_id}`, "DELETE",
+    null, env, { prefer: "return=minimal" }
   );
 
-  // 選択されたエリアをupsert
-  for (const areaId of area_ids) {
-    await supabaseRequest("/user_areas", "POST", {
-      user_id, area_id: areaId, active: true,
-    }, env, {
-      prefer: "resolution=merge-duplicates,return=minimal",
-    });
-  }
+  // 選択されたエリアを新規挿入
+  const rows = area_ids.map(areaId => ({ user_id, area_id: areaId, active: true }));
+  await supabaseRequest("/user_areas", "POST", rows, env, {
+    prefer: "return=minimal",
+  });
 
   return jsonResponse({ updated: true, area_ids });
 }
@@ -919,18 +916,15 @@ async function handleRegisterUser(request, env) {
     if (area_ids.length < 1 || area_ids.length > 3) {
       return errorResponse("エリアは1〜3個まで選択できます", 400);
     }
-    // 既存を無効化
+    // 既存を削除して新規挿入
     await supabaseRequest(
-      `/user_areas?user_id=eq.${user_id}`, "PATCH",
-      { active: false }, env, { prefer: "return=minimal" }
+      `/user_areas?user_id=eq.${user_id}`, "DELETE",
+      null, env, { prefer: "return=minimal" }
     );
-    for (const areaId of area_ids) {
-      await supabaseRequest("/user_areas", "POST", {
-        user_id, area_id: areaId, active: true,
-      }, env, {
-        prefer: "resolution=merge-duplicates,return=minimal",
-      });
-    }
+    const rows = area_ids.map(areaId => ({ user_id, area_id: areaId, active: true }));
+    await supabaseRequest("/user_areas", "POST", rows, env, {
+      prefer: "return=minimal",
+    });
   }
 
   return jsonResponse({ registered: true, trial_ends_at: trialEnd });
