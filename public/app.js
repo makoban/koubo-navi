@@ -645,8 +645,10 @@ async function loadDashboard() {
 
     if (profileData.profile) {
       companyProfile = profileData.profile;
-      document.getElementById("dashCompanyName").textContent = profileData.profile.company_name || "";
     }
+    // companyProfile may already be set from onboarding AI analysis
+    document.getElementById("dashCompanyName").textContent =
+      companyProfile?.company_name || profileData.user?.notification_email?.split("@")[0] || "";
 
     // Status badge
     const statusEl = document.getElementById("dashStatus");

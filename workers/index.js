@@ -866,9 +866,11 @@ async function handleRegisterUser(request, env) {
     headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
   });
 
-  // プロフィールを更新（編集済みデータがあれば）
+  // プロフィールを保存（DELETE + POST で確実にupsert）
   if (profile && typeof profile === "object") {
-    await supabaseRequest(`/company_profiles?user_id=eq.${user_id}`, "PATCH", {
+    await supabaseRequest(`/company_profiles?user_id=eq.${user_id}`, "DELETE", null, env, { prefer: "return=minimal" });
+    await supabaseRequest("/company_profiles", "POST", {
+      user_id,
       company_name: profile.company_name || null,
       location: profile.location || null,
       business_areas: profile.business_areas || [],
