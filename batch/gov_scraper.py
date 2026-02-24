@@ -85,12 +85,12 @@ def _parse_kkj_xml(xml_bytes: bytes) -> list[dict]:
         category_raw = _xml_text(sr, "Category") or ""
         method_raw = _xml_text(sr, "ProcedureType") or ""
 
-        # detail_url: Key から固有URL生成
-        key = _xml_text(sr, "Key")
-        if key:
-            detail_url = f"https://www.kkj.go.jp/d/?A={key}&L=ja"
-        else:
-            detail_url = _xml_text(sr, "ExternalDocumentURI")
+        # detail_url: ExternalDocumentURI を優先（KKJ /d/ URLは404になるため）
+        detail_url = _xml_text(sr, "ExternalDocumentURI")
+        if not detail_url:
+            key = _xml_text(sr, "Key")
+            if key:
+                detail_url = f"https://www.kkj.go.jp/d/?A={key}&L=ja"
 
         # summary: ProjectDescription から余分なメタデータを除去
         summary_raw = _xml_text(sr, "ProjectDescription") or ""
