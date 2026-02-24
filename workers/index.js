@@ -225,6 +225,7 @@ ${pageText}`;
   const text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
   let profile;
   try { profile = JSON.parse(text); } catch { profile = {}; }
+  if (Array.isArray(profile)) profile = profile[0] || {};
 
   // 3. DB に保存
   await supabaseRequest(
