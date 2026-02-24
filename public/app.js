@@ -449,12 +449,12 @@ async function loadAreas() {
         <div class="area-region-group__items">`;
       for (const areaId of regionAreas) {
         const area = areaMap[areaId];
-        html += `<label class="area-checkbox" onclick="toggleAreaCheckbox(this)">
+        html += `<div class="area-checkbox" onclick="toggleAreaCheckbox(this)">
           <input type="checkbox" value="${escapeHtml(area.area_id)}">
           <div class="area-checkbox__info">
             <h4>${escapeHtml(area.area_name)}</h4>
           </div>
-        </label>`;
+        </div>`;
       }
       html += `</div></div>`;
     }
@@ -1019,12 +1019,12 @@ async function renderSettingsAreas(profileData) {
       const isChecked = _userAreaIdsCache.includes(areaId);
       const checkedAttr = isChecked ? "checked" : "";
       const checkedClass = isChecked ? "checked" : "";
-      html += `<label class="area-checkbox ${checkedClass}" onclick="toggleSettingsAreaCheckbox(this)">
+      html += `<div class="area-checkbox ${checkedClass}" onclick="toggleSettingsAreaCheckbox(this)">
         <input type="checkbox" value="${escapeHtml(area.area_id)}" ${checkedAttr}>
         <div class="area-checkbox__info">
           <h4>${escapeHtml(area.area_name)}</h4>
         </div>
-      </label>`;
+      </div>`;
     }
     html += `</div></div>`;
   }
