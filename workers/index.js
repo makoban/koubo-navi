@@ -371,8 +371,7 @@ async function handlePutAreas(request, env) {
     await supabaseRequest("/user_areas", "POST", {
       user_id, area_id: areaId, active: true,
     }, env, {
-      prefer: "return=minimal",
-      headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
+      prefer: "resolution=merge-duplicates,return=minimal",
     });
   }
 
@@ -406,16 +405,12 @@ async function handleGetOpportunities(request, env) {
   const requestedLimit = parseInt(url.searchParams.get("limit") || "100");
   const maxLimit = Math.min(requestedLimit, tierMaxResults);
   const offset = url.searchParams.get("offset") || "0";
-  const days = url.searchParams.get("days") || "30";
   const category = url.searchParams.get("category");
   const area = url.searchParams.get("area");
-
-  const since = new Date(Date.now() - parseInt(days) * 86400000).toISOString();
 
   let query = `/user_opportunities?user_id=eq.${user_id}` +
     `&match_score=gte.${scoreMin}&match_score=lte.${scoreMax}` +
     `&is_dismissed=eq.false` +
-    `&created_at=gte.${since}` +
     `&select=*,opportunities(*)` +
     `&order=match_score.desc` +
     `&limit=${maxLimit}&offset=${offset}`;
@@ -439,8 +434,8 @@ async function handleGetOpportunities(request, env) {
 
   // 総件数を取得（ティア制限なし）
   const countResult = await supabaseRequest(
-    `/user_opportunities?user_id=eq.${user_id}&is_dismissed=eq.false&created_at=gte.${since}&select=id`,
-    "GET", null, env, { headers: { "Prefer": "count=exact" } }
+    `/user_opportunities?user_id=eq.${user_id}&is_dismissed=eq.false&select=id`,
+    "GET", null, env, { prefer: "count=exact" }
   );
 
   return jsonResponse({
@@ -769,8 +764,7 @@ async function handleWebhook(request, env, ctx) {
             plan,
             status: "active",
           }, env, {
-            prefer: "return=minimal",
-            headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
+            prefer: "resolution=merge-duplicates,return=minimal",
           });
           break;
         }
@@ -863,8 +857,7 @@ async function handleRegisterUser(request, env) {
   if (company_text) userData.company_text = company_text;
 
   await supabaseRequest("/koubo_users", "POST", userData, env, {
-    prefer: "return=minimal",
-    headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
+    prefer: "resolution=merge-duplicates,return=minimal",
   });
 
   // プロフィールを保存（DELETE + POST で確実にupsert）
@@ -895,8 +888,7 @@ async function handleRegisterUser(request, env) {
       await supabaseRequest("/user_areas", "POST", {
         user_id, area_id: areaId, active: true,
       }, env, {
-        prefer: "return=minimal",
-        headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
+        prefer: "resolution=merge-duplicates,return=minimal",
       });
     }
   }
@@ -944,7 +936,7 @@ async function handleInitialScreen(request, env, ctx) {
       const since = new Date(Date.now() - 30 * 86400000).toISOString();
       const areaFilter = areaIds.map(a => `area_id.eq.${a}`).join(",");
       const oppsResult = await supabaseRequest(
-        `/opportunities?or=(${areaFilter})&scraped_at=gte.${since}&select=id,title,category,organization,method,area_id,deadline&order=scraped_at.desc&limit=300`,
+        `/opportunities?or=(${areaFilter})&scraped_at=gte.${since}&select=id,title,category,organization,method,area_id,deadline&order=scraped_at.desc&limit=50`,
         "GET", null, env
       );
       const opportunities = oppsResult.data || [];
@@ -1032,8 +1024,7 @@ scoreが30未満の案件は配列に含めないでください。`;
           ...m,
           is_dismissed: false,
         }, env, {
-          prefer: "return=minimal",
-          headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
+          prefer: "resolution=merge-duplicates,return=minimal",
         });
       }
 

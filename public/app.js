@@ -308,11 +308,34 @@ async function analyzeCompany() {
 
   btn.disabled = true;
   btn.textContent = "分析中...";
-  status.textContent = inputMode === "url"
-    ? "AIがウェブサイトを読み取っています...（10〜30秒）"
-    : "AIが事業内容を分析しています...（10〜20秒）";
   status.classList.remove("hidden");
   status.style.color = "";
+
+  // 進捗ステップメッセージ（時間経過で更新）
+  const steps = inputMode === "url"
+    ? [
+        "AIがウェブサイトにアクセスしています...",
+        "ページ内容を読み取っています...",
+        "事業内容を解析しています...",
+        "マッチングキーワードを生成しています...",
+        "プロフィールを作成しています...",
+        "もう少しお待ちください...",
+      ]
+    : [
+        "AIが事業内容を分析しています...",
+        "事業分野を特定しています...",
+        "マッチングキーワードを生成しています...",
+        "プロフィールを作成しています...",
+        "もう少しお待ちください...",
+      ];
+  let stepIdx = 0;
+  status.textContent = steps[0];
+  const stepTimer = setInterval(() => {
+    stepIdx++;
+    if (stepIdx < steps.length) {
+      status.textContent = steps[stepIdx];
+    }
+  }, inputMode === "url" ? 8000 : 5000);
 
   try {
     const token = await getAccessToken();
@@ -339,6 +362,7 @@ async function analyzeCompany() {
     status.textContent = `エラー: ${err.message}`;
     status.style.color = "var(--danger)";
   } finally {
+    clearInterval(stepTimer);
     btn.disabled = false;
     btn.textContent = "AIで分析する";
   }
