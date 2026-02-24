@@ -400,48 +400,88 @@ async function handleGetOpportunities(request, env) {
   const tier = isPaid ? "paid" : "free";
 
   const url = new URL(request.url);
-  const scoreMin = url.searchParams.get("score_min") || "0";
-  const scoreMax = url.searchParams.get("score_max") || "100";
-  const requestedLimit = parseInt(url.searchParams.get("limit") || "100");
+  const scoreMin = parseInt(url.searchParams.get("score_min") || "0");
+  const requestedLimit = parseInt(url.searchParams.get("limit") || "200");
   const maxLimit = Math.min(requestedLimit, tierMaxResults);
-  const offset = url.searchParams.get("offset") || "0";
   const category = url.searchParams.get("category");
-  const area = url.searchParams.get("area");
 
-  let query = `/user_opportunities?user_id=eq.${user_id}` +
-    `&match_score=gte.${scoreMin}&match_score=lte.${scoreMax}` +
-    `&is_dismissed=eq.false` +
-    `&select=*,opportunities(*)` +
-    `&order=match_score.desc` +
-    `&limit=${maxLimit}&offset=${offset}`;
+  // 1. ユーザーの登録エリアを取得
+  const areasResult = await supabaseRequest(
+    `/user_areas?user_id=eq.${user_id}&active=eq.true&select=area_id`,
+    "GET", null, env
+  );
+  const userAreaIds = (areasResult.data || []).map(a => a.area_id);
+  if (userAreaIds.length === 0) {
+    return jsonResponse({ opportunities: [], total: 0, total_unfiltered: 0, tier, max_results: tierMaxResults });
+  }
 
-  const result = await supabaseRequest(query, "GET", null, env);
-  if (!result.ok) return errorResponse("案件取得失敗", 500);
+  // 2. 登録エリアの全案件を opportunities テーブルから取得
+  const areaFilter = userAreaIds.map(id => encodeURIComponent(id)).join(",");
+  const oppResult = await supabaseRequest(
+    `/opportunities?area_id=in.(${areaFilter})&select=*&order=created_at.desc&limit=500`,
+    "GET", null, env
+  );
+  if (!oppResult.ok) return errorResponse("案件取得失敗", 500);
+  const allOpps = oppResult.data || [];
 
-  // フィルタリング (category, area はPostGREST join先のフィルタが複雑なので JS 側で)
-  let items = result.data || [];
+  // 3. user_opportunities からスコア情報を取得
+  const uoResult = await supabaseRequest(
+    `/user_opportunities?user_id=eq.${user_id}&select=opportunity_id,match_score,match_reason,recommendation,rank_position,is_dismissed,detailed_analysis`,
+    "GET", null, env
+  );
+  const uoMap = {};
+  (uoResult.data || []).forEach(uo => { uoMap[uo.opportunity_id] = uo; });
+
+  // 4. マージ: 全案件にスコア情報を付与
+  let items = allOpps.map(opp => {
+    const uo = uoMap[opp.id];
+    return {
+      opportunity_id: opp.id,
+      match_score: uo ? uo.match_score : null,
+      match_reason: uo ? uo.match_reason : null,
+      recommendation: uo ? uo.recommendation : null,
+      rank_position: uo ? uo.rank_position : null,
+      is_dismissed: uo ? uo.is_dismissed : false,
+      detailed_analysis: uo ? uo.detailed_analysis : null,
+      opportunities: opp,
+    };
+  });
+
+  // dismissed を除外
+  items = items.filter(i => !i.is_dismissed);
+
+  // スコアフィルター（0=全スコア の場合は未評価も含む）
+  if (scoreMin > 0) {
+    items = items.filter(i => i.match_score !== null && i.match_score >= scoreMin);
+  }
+
+  // カテゴリフィルター
   if (category) {
     items = items.filter(i => i.opportunities?.category === category);
   }
-  if (area) {
-    items = items.filter(i => i.opportunities?.area_id === area);
-  }
+
+  // ソート: スコアあり（降順）→ スコアなし（日付順）
+  items.sort((a, b) => {
+    if (a.match_score !== null && b.match_score !== null) return b.match_score - a.match_score;
+    if (a.match_score !== null) return -1;
+    if (b.match_score !== null) return 1;
+    return 0;
+  });
+
+  const totalUnfiltered = items.length;
+
+  // ティア制限
+  items = items.slice(0, maxLimit);
 
   // ランキング番号を付与
   items.forEach((item, idx) => {
     item.rank_position = item.rank_position || (idx + 1);
   });
 
-  // 総件数を取得（ティア制限なし）
-  const countResult = await supabaseRequest(
-    `/user_opportunities?user_id=eq.${user_id}&is_dismissed=eq.false&select=id`,
-    "GET", null, env, { prefer: "count=exact" }
-  );
-
   return jsonResponse({
     opportunities: items,
     total: items.length,
-    total_unfiltered: countResult.data?.length || items.length,
+    total_unfiltered: totalUnfiltered,
     tier,
     max_results: tierMaxResults,
   });

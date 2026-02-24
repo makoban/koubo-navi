@@ -1199,6 +1199,7 @@ body {
 .opp-card__score--high { color: var(--success); }
 .opp-card__score--mid { color: var(--accent); }
 .opp-card__score--low { color: var(--text-muted); }
+.opp-card__score--unscored { color: var(--text-muted); font-size: 11px; opacity: 0.7; }
 .opp-card__body { flex: 1; }
 .opp-card__title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
 .opp-card__meta { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }

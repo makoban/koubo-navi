@@ -1,4 +1,4 @@
-// 公募ナビAI v2.3
+// 公募ナビAI v2.1
 // LP + Onboarding + Dashboard（エリア管理・フィルター改善）
 
 // ---------------------------------------------------------------------------
@@ -687,14 +687,7 @@ async function loadDashboard() {
     const areaNameMap = {};
     allAreas.forEach(a => { areaNameMap[a.area_id] = a.area_name; });
 
-    // Filter options: 登録エリアのみ表示
     const userAreaIds = profileData.areas || [];
-    const filterArea = document.getElementById("filterArea");
-    const userAreaOptions = userAreaIds
-      .map(id => ({ id, name: areaNameMap[id] || id }))
-      .filter(a => a.name);
-    filterArea.innerHTML = '<option value="">全エリア</option>' +
-      userAreaOptions.map(a => `<option value="${a.id}">${a.name}</option>`).join("");
 
     // Info panel: 登録エリア & プロフィール要約
     const userAreaNames = userAreaIds.map(id => areaNameMap[id] || id);
@@ -731,10 +724,8 @@ let totalUnfiltered = 0;
 async function loadOpportunities() {
   const token = await getAccessToken();
   const scoreMin = document.getElementById("filterScore").value;
-  const area = document.getElementById("filterArea").value;
 
-  const params = new URLSearchParams({ score_min: scoreMin, limit: "100" });
-  if (area) params.set("area", area);
+  const params = new URLSearchParams({ score_min: scoreMin, limit: "200" });
 
   try {
     const resp = await fetch(`${WORKER_BASE}/api/user/opportunities?${params}`, {
@@ -768,7 +759,9 @@ function renderOpportunities(items) {
   let html = items.map((item, idx) => {
     const opp = item.opportunities || {};
     const score = item.match_score;
-    const scoreClass = score >= 80 ? "high" : score >= 60 ? "mid" : "low";
+    const hasScore = score !== null && score !== undefined;
+    const scoreClass = !hasScore ? "unscored" : score >= 80 ? "high" : score >= 60 ? "mid" : "low";
+    const scoreLabel = hasScore ? `${score}%` : "未評価";
     const rec = item.recommendation || "";
     const rank = item.rank_position || (idx + 1);
     const oppId = item.opportunity_id || opp.id || "";
@@ -776,18 +769,18 @@ function renderOpportunities(items) {
     return `
       <div class="opp-card" id="opp-${escapeHtml(oppId)}">
         <div class="opp-card__rank">#${rank}</div>
-        <div class="opp-card__score opp-card__score--${scoreClass}">${score}%</div>
+        <div class="opp-card__score opp-card__score--${scoreClass}">${scoreLabel}</div>
         <div class="opp-card__body">
           <div class="opp-card__title">${escapeHtml(opp.title || item.title || "不明")}</div>
           <div class="opp-card__meta">
             ${escapeHtml(opp.organization || "")} / ${escapeHtml(opp.category || "")} / ${escapeHtml(opp.method || "")}
             ${opp.deadline ? ` / 締切: ${opp.deadline}` : ""}
           </div>
-          <div class="opp-card__reason">${escapeHtml(item.match_reason || "")}</div>
+          ${rec ? `<div class="opp-card__reason">${escapeHtml(rec)}</div>` : ""}
           <div class="opp-card__actions">
             ${opp.detail_url ? `<a href="${escapeHtml(opp.detail_url)}" target="_blank" class="btn btn--outline btn--sm">詳細を見る</a>` : ""}
             <button class="btn btn--primary btn--sm" onclick="analyzeOpportunity('${escapeHtml(oppId)}')">AI詳細分析</button>
-            <span class="keyword-tag">${escapeHtml(rec)}</span>
+            ${rec ? `<span class="keyword-tag">${escapeHtml(rec)}</span>` : ""}
           </div>
           <div class="opp-card__analysis hidden" id="analysis-${escapeHtml(oppId)}"></div>
         </div>
