@@ -225,6 +225,32 @@ body {
   margin-bottom: 32px;
   font-weight: 500;
 }
+.hero__price-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  background: linear-gradient(135deg, rgba(201,169,110,0.15) 0%, rgba(201,169,110,0.05) 100%);
+  border: 1px solid var(--border-gold);
+  border-radius: 32px;
+  padding: 10px 28px;
+  margin-bottom: 32px;
+}
+.hero__price-badge-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+}
+.hero__price-badge-amount {
+  font-size: 15px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.hero__price-badge-amount strong {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--accent);
+}
 .hero__title {
   font-family: var(--font-heading);
   font-size: 44px;
@@ -1081,6 +1107,33 @@ body {
   font-size: 24px;
 }
 .dashboard__meta { display: flex; align-items: center; gap: 12px; }
+.dashboard__info-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+.dashboard__info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dashboard__info-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+.dashboard__info-value {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
 .badge {
   padding: 4px 12px;
   border-radius: 20px;

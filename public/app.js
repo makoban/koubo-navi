@@ -1,5 +1,5 @@
-// 公募ナビAI v2.1
-// LP + Onboarding + Dashboard（LP/ダッシュボード分離対応）
+// 公募ナビAI v2.2
+// LP + Onboarding + Dashboard（データ先行型バッチ対応）
 
 // ---------------------------------------------------------------------------
 // Config
@@ -563,12 +563,16 @@ async function startTrialCheckout() {
 async function verifyCheckout(sessionId) {
   // After returning from Stripe, show dashboard and trigger initial screening
   showPage("dashboard");
-
   try {
     const token = await getAccessToken();
-    if (!token) return;
+    if (token) triggerInitialScreening(token);
+  } catch {
+    // スクリーニングに失敗してもダッシュボードは表示
+  }
+}
 
-    // 初期スクリーニングを起動
+async function triggerInitialScreening(token) {
+  try {
     const screenResp = await fetch(`${WORKER_BASE}/api/user/screen`, {
       method: "POST",
       headers: {
@@ -577,6 +581,11 @@ async function verifyCheckout(sessionId) {
       },
     });
     const screenData = await screenResp.json();
+
+    if (screenData.status === "already_done") {
+      loadOpportunities();
+      return;
+    }
 
     if (screenData.status === "screening_started") {
       // スクリーニング進捗を表示
@@ -609,9 +618,11 @@ async function verifyCheckout(sessionId) {
           }
         }
       }, 5000);
+    } else {
+      loadOpportunities();
     }
   } catch {
-    // スクリーニングに失敗してもダッシュボードは表示
+    loadOpportunities();
   }
 }
 
@@ -643,15 +654,35 @@ async function loadDashboard() {
     statusEl.textContent = userStatus === "active" ? "有料プラン" : userStatus === "trial" ? "無料トライアル" : userStatus;
     statusEl.className = `badge badge--${userStatus}`;
 
-    // Load filter options
+    // Load filter options + area names for info panel
     const areasResp = await fetch(`${WORKER_BASE}/api/areas`);
     const areasData = await areasResp.json();
+    const allAreas = areasData.areas || [];
     const filterArea = document.getElementById("filterArea");
     filterArea.innerHTML = '<option value="">全エリア</option>' +
-      (areasData.areas || []).map(a => `<option value="${a.area_id}">${a.area_name}</option>`).join("");
+      allAreas.map(a => `<option value="${a.area_id}">${a.area_name}</option>`).join("");
 
-    // Load opportunities
-    loadOpportunities();
+    // Info panel: 登録エリア & プロフィール要約
+    const userAreaIds = profileData.areas || [];
+    const areaNameMap = {};
+    allAreas.forEach(a => { areaNameMap[a.area_id] = a.area_name; });
+    const userAreaNames = userAreaIds.map(id => areaNameMap[id] || id);
+    document.getElementById("dashAreas").textContent = userAreaNames.length > 0
+      ? userAreaNames.join("、") : "未設定";
+
+    if (companyProfile) {
+      document.getElementById("dashBusiness").textContent =
+        (companyProfile.business_areas || []).join("、") || "-";
+      document.getElementById("dashKeywords").textContent =
+        (companyProfile.matching_keywords || []).join("、") || "-";
+    }
+
+    // Trigger initial screening if not done yet (ensures matches exist even without Stripe return)
+    if (profileData.user && !profileData.user.initial_screening_done) {
+      triggerInitialScreening(token);
+    } else {
+      loadOpportunities();
+    }
 
     // Load settings
     loadSettings(profileData);

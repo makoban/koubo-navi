@@ -65,6 +65,17 @@ def get_user_areas(user_id: str) -> list[str]:
 
 # --- Area Sources ---
 
+def get_all_active_sources() -> list[dict]:
+    """全エリアのアクティブなデータソースを取得。"""
+    resp = requests.get(
+        _url("/area_sources?active=eq.true&select=*&order=area_id"),
+        headers=_headers(),
+        timeout=15,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
 def get_area_sources(area_id: str) -> list[dict]:
     """指定エリアのアクティブなデータソースを取得。"""
     resp = requests.get(
@@ -108,6 +119,29 @@ def update_source_status(
 
 
 # --- Opportunities ---
+
+def get_opportunities_by_areas(
+    area_ids: list[str],
+    days: int = 30,
+    limit: int = 300,
+) -> list[dict]:
+    """指定エリアの直近N日分の案件を取得。"""
+    from datetime import timedelta
+
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    area_filter = ",".join(f"area_id.eq.{a}" for a in area_ids)
+    resp = requests.get(
+        _url(
+            f"/opportunities?or=({area_filter})"
+            f"&scraped_at=gte.{since}"
+            f"&select=*&order=scraped_at.desc&limit={limit}"
+        ),
+        headers=_headers(),
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
 
 def upsert_opportunities(opportunities: list[dict], area_id: str, source_id: str) -> list[dict]:
     """案件をDB保存（重複はスキップ）。保存された案件を返す。"""

@@ -41,38 +41,24 @@ def run_daily_check():
         # 0. 未スクリーニングユーザーのフォールバックチェック
         _run_initial_screening_fallback()
 
-        # 1. アクティブユーザーを取得
-        users = db.get_active_users()
-        logger.info("アクティブユーザー: %d人", len(users))
+        # =====================================================
+        # Phase 1: 全ソースをスクレイピング（ユーザー有無に関係なく）
+        # =====================================================
+        all_sources = db.get_all_active_sources()
+        logger.info("全アクティブソース: %d件", len(all_sources))
 
-        if not users:
-            logger.info("処理対象ユーザーなし。終了。")
-            _finish_log(log_id, stats, "completed")
-            return stats
+        # エリアごとにグルーピング
+        sources_by_area = {}
+        for src in all_sources:
+            aid = src["area_id"]
+            if aid not in sources_by_area:
+                sources_by_area[aid] = []
+            sources_by_area[aid].append(src)
 
-        # 2. 必要なエリアを集約
-        required_areas = set()
-        user_areas_map = {}  # user_id -> [area_id, ...]
-
-        for user in users:
-            user_id = user["id"]
-            areas = db.get_user_areas(user_id)
-            user_areas_map[user_id] = areas
-            required_areas.update(areas)
-
-        logger.info("対象エリア: %s", required_areas)
-
-        # 3. エリアごとにスクレイピング
         area_opportunities = {}  # area_id -> [opportunity records with DB id]
 
-        for area_id in required_areas:
-            logger.info("--- エリア: %s ---", area_id)
-            sources = db.get_area_sources(area_id)
-
-            if not sources:
-                logger.warning("エリア %s のソースなし", area_id)
-                continue
-
+        for area_id, sources in sources_by_area.items():
+            logger.info("--- エリア: %s (%d sources) ---", area_id, len(sources))
             area_opps = []
 
             for source in sources:
@@ -99,6 +85,22 @@ def run_daily_check():
             area_opportunities[area_id] = area_opps
 
         logger.info("スクレイピング完了: 合計 %d件", stats["opportunities_scraped"])
+
+        # =====================================================
+        # Phase 2: ユーザーが存在する場合のみマッチング・通知
+        # =====================================================
+        users = db.get_active_users()
+        logger.info("アクティブユーザー: %d人", len(users))
+
+        if not users:
+            logger.info("ユーザーなし。スクレイピングのみ完了。")
+            _finish_log(log_id, stats, "completed")
+            return stats
+
+        # ユーザーごとのエリアマップ
+        user_areas_map = {}
+        for user in users:
+            user_areas_map[user["id"]] = db.get_user_areas(user["id"])
 
         # 4. ユーザーごとにマッチング
         for user in users:
@@ -211,23 +213,7 @@ def _run_initial_screening_fallback():
                     continue
 
                 # 過去30日分の案件を集める
-                from datetime import timedelta
-                import requests as req
-
-                since = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-                area_filter = ",".join(f"area_id.eq.{a}" for a in areas)
-
-                resp = req.get(
-                    db._url(
-                        f"/opportunities?or=({area_filter})"
-                        f"&scraped_at=gte.{since}"
-                        "&select=*&order=scraped_at.desc&limit=300"
-                    ),
-                    headers=db._headers(),
-                    timeout=30,
-                )
-                resp.raise_for_status()
-                opps = resp.json()
+                opps = db.get_opportunities_by_areas(areas, days=30, limit=300)
 
                 if not opps:
                     logger.info("対象案件なし(スクリーニング): %s", user_id)

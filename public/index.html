@@ -18,7 +18,7 @@
       <div class="header__logo">
         <span class="header__icon">&#x1f4cb;</span>
         <span class="header__title">公募ナビAI</span>
-        <div class="header__badge">v2.1</div>
+        <div class="header__badge">v2.2</div>
       </div>
       <div class="header__actions" id="authArea">
         <button class="btn btn--outline btn--sm" id="loginBtn" onclick="showLoginModal()">ログイン</button>
@@ -34,21 +34,25 @@
     <!-- Hero -->
     <section class="hero">
       <div class="hero__content">
-        <div class="hero__label">AI x 公共入札</div>
+        <div class="hero__price-badge">
+          <span class="hero__price-badge-label">他社比 最大1/21の価格</span>
+          <span class="hero__price-badge-amount">月額 <strong>2,980</strong>円</span>
+        </div>
         <h1 class="hero__title">
           貴社にマッチする<br>
           <span class="hero__title-accent">公募・入札案件</span>を<br>
           AIが毎日、自動で見つける。
         </h1>
         <p class="hero__subtitle">
-          会社のURLか事業内容を入力するだけ。AIが事業内容を読み取り、<br>
-          全国の行政案件から最適な公募・入札情報を毎朝メールでお届けします。
+          URLか事業内容を入力するだけ。設定は3分。<br>
+          AIが事業内容を読み取り、全国の行政案件から<br>
+          最適な公募・入札情報を毎朝メールでお届けします。
         </p>
         <div class="hero__actions">
           <button class="btn btn--primary btn--lg" onclick="startOnboarding()">無料で始める（7日間）</button>
           <a href="#service-sample" class="btn btn--outline btn--lg">サンプルを見る</a>
         </div>
-        <p class="hero__note">7日間無料・途中解約可 / 3分で登録完了</p>
+        <p class="hero__note">7日間無料（クレカ不要） / 途中解約可 / 設定3分</p>
       </div>
     </section>
 
@@ -533,6 +537,22 @@
         </div>
       </div>
 
+      <!-- Info Panel: 登録エリア & プロフィール要約 -->
+      <div class="dashboard__info-panel" id="dashInfoPanel">
+        <div class="dashboard__info-item">
+          <span class="dashboard__info-label">登録エリア</span>
+          <span class="dashboard__info-value" id="dashAreas">-</span>
+        </div>
+        <div class="dashboard__info-item">
+          <span class="dashboard__info-label">事業分野</span>
+          <span class="dashboard__info-value" id="dashBusiness">-</span>
+        </div>
+        <div class="dashboard__info-item">
+          <span class="dashboard__info-label">マッチングキーワード</span>
+          <span class="dashboard__info-value" id="dashKeywords">-</span>
+        </div>
+      </div>
+
       <!-- Tab Navigation -->
       <div class="dashboard__tabs">
         <button class="tab active" data-tab="opportunities" onclick="switchTab('opportunities')">案件一覧</button>
@@ -644,7 +664,7 @@
   <!-- Footer -->
   <footer class="footer">
     <div class="footer__inner">
-      <p>公募ナビAI v2.1 &mdash; &copy; 2026 <a href="https://bantex.jp" target="_blank">bantex</a></p>
+      <p>公募ナビAI v2.2 &mdash; &copy; 2026 <a href="https://bantex.jp" target="_blank">bantex</a></p>
       <div class="footer__links">
         <a href="https://bantex.jp/terms.html" target="_blank">利用規約</a>
         <a href="https://bantex.jp/privacy.html" target="_blank">プライバシーポリシー</a>
