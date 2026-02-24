@@ -96,12 +96,15 @@ def _parse_kkj_xml(xml_bytes: bytes) -> list[dict]:
         summary_raw = _xml_text(sr, "ProjectDescription") or ""
         summary = _clean_summary(summary_raw, title)
 
+        # 締切日を複数タグから探索
+        deadline = _extract_deadline(sr)
+
         item = {
             "title": title,
             "organization": _xml_text(sr, "OrganizationName"),
             "category": _map_category(category_raw),
             "method": _map_method(method_raw),
-            "deadline": None,
+            "deadline": deadline,
             "budget": None,
             "summary": summary,
             "detail_url": detail_url,
@@ -117,6 +120,29 @@ def _xml_text(element, tag: str):
     child = element.find(tag)
     if child is not None and child.text:
         return child.text.strip()
+    return None
+
+
+def _extract_deadline(sr) -> str | None:
+    """SearchResult要素から締切日を抽出する（YYYY-MM-DD形式）。"""
+    # 複数の可能なタグ名を試す
+    for tag in ("SubmissionDeadline", "DeadlineDate", "TenderSubmissionDeadline",
+                "ClosingDate", "ResponseDeadline", "EndDate"):
+        raw = _xml_text(sr, tag)
+        if raw:
+            try:
+                # ISO形式 "2026-02-28T17:00:00+09:00" → "2026-02-28"
+                return raw[:10]
+            except Exception:
+                pass
+
+    # ProjectDescription から締切日を推測（YYYY-MM-DD パターン）
+    desc = _xml_text(sr, "ProjectDescription") or ""
+    import re
+    date_match = re.search(r"(\d{4}-\d{2}-\d{2})", desc)
+    if date_match:
+        return date_match.group(1)
+
     return None
 
 

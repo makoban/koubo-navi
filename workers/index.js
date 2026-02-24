@@ -616,6 +616,9 @@ recommended_preparation_daysは準備に必要な日数の目安です。`;
   let analysis;
   try { analysis = JSON.parse(rawText); } catch { return errorResponse("AI分析結果の解析に失敗しました", 502); }
 
+  // Gemini が配列でラップする場合の対応
+  if (Array.isArray(analysis)) analysis = analysis[0] || {};
+
   // DBに保存（キャッシュ）
   await supabaseRequest(
     `/user_opportunities?user_id=eq.${user_id}&opportunity_id=eq.${opportunity_id}`,

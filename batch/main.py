@@ -39,10 +39,16 @@ def main():
 
     logger.info("バッチ処理終了: %s", stats)
 
-    # エラーがあった場合は exit code 1（Render.com でアラート）
-    if stats.get("errors_count", 0) > 0:
-        logger.warning("エラーあり: %d件", stats["errors_count"])
-        sys.exit(1)
+    # 致命的エラーの場合のみ exit code 1（個別ソース失敗は許容）
+    errors = stats.get("errors_count", 0)
+    if errors > 0:
+        # fatal フェーズのエラーがあればexit(1)
+        fatal_errors = [e for e in stats.get("error_details", []) if e.get("phase") == "fatal"]
+        if fatal_errors:
+            logger.critical("致命的エラーあり: %d件", len(fatal_errors))
+            sys.exit(1)
+        else:
+            logger.warning("部分エラーあり: %d件（バッチは正常完了）", errors)
 
 
 if __name__ == "__main__":
