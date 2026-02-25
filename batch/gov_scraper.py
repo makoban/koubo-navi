@@ -138,10 +138,11 @@ def _extract_deadline(sr) -> str | None:
 
     desc = _xml_text(sr, "ProjectDescription") or ""
 
-    # ISO形式 YYYY-MM-DD パターン
-    date_match = re.search(r"(\d{4}-\d{2}-\d{2})", desc)
-    if date_match:
-        return date_match.group(1)
+    # ISO形式 YYYY-MM-DD パターン（電話番号 0538-66-11 等を除外するためバリデーション付き）
+    for date_match in re.finditer(r"(\d{4})-(\d{2})-(\d{2})", desc):
+        y, m, d = int(date_match.group(1)), int(date_match.group(2)), int(date_match.group(3))
+        if 2020 <= y <= 2030 and 1 <= m <= 12 and 1 <= d <= 31:
+            return date_match.group(0)
 
     # 和暦パターン: 公開終了日・提出期限・入札期限 等から抽出
     wareki = _extract_wareki_deadline(desc)
