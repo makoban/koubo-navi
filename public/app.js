@@ -1,5 +1,5 @@
-// 公募ナビAI v2.7
-// Fix: AI詳細分析キャッシュ配列修正、トライアルティア制限、KKJ API Count=1000
+// 公募ナビAI v2.8
+// 詳細ページ取得: 公告日・締切日・予算・難易度・詳細要約をGeminiで抽出
 
 // ---------------------------------------------------------------------------
 // Config
@@ -786,7 +786,11 @@ function renderOpportunities(items) {
 
     const areaName = AREA_NAMES[opp.area_id] || opp.area_id || "";
     const deadlineStr = opp.deadline || "";
-    const summaryText = opp.summary || "";
+    const summaryText = opp.detailed_summary || opp.summary || "";
+    const publishedDate = opp.published_date || "";
+    const difficulty = opp.difficulty || "";
+    const budget = opp.budget || "";
+    const diffClass = difficulty === "\u9AD8" ? "high" : difficulty === "\u4E2D" ? "mid" : difficulty === "\u4F4E" ? "low" : "";
 
     return `
       <div class="opp-card ${isBlurred ? 'opp-card--blurred' : ''}" id="opp-${escapeHtml(oppId)}">
@@ -797,11 +801,16 @@ function renderOpportunities(items) {
           <div class="opp-card__title">${escapeHtml(opp.title || item.title || "不明")}</div>
           <div class="opp-card__meta">
             ${areaName ? `<span class="opp-card__area">${escapeHtml(areaName)}</span>` : ""}
+            ${difficulty ? `<span class="opp-card__difficulty opp-card__difficulty--${diffClass}">${escapeHtml(difficulty)}</span>` : ""}
             ${escapeHtml(opp.organization || "")}
             ${opp.category ? ` / ${escapeHtml(opp.category)}` : ""}
             ${opp.method ? ` / ${escapeHtml(opp.method)}` : ""}
           </div>
-          ${deadlineStr ? `<div class="opp-card__deadline">締切: ${escapeHtml(deadlineStr)}</div>` : ""}
+          <div class="opp-card__dates">
+            ${publishedDate ? `<span class="opp-card__published">公告: ${escapeHtml(publishedDate)}</span>` : ""}
+            ${deadlineStr ? `<span class="opp-card__deadline">締切: ${escapeHtml(deadlineStr)}</span>` : ""}
+            ${budget ? `<span class="opp-card__budget">${escapeHtml(budget)}</span>` : ""}
+          </div>
           ${summaryText ? `<div class="opp-card__summary">${escapeHtml(summaryText)}</div>` : ""}
           ${rec ? `<div class="opp-card__reason">${escapeHtml(rec)}</div>` : ""}
           ${!isBlurred ? `<div class="opp-card__actions">

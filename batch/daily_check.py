@@ -14,6 +14,7 @@ import traceback
 from datetime import datetime, timezone
 
 import db
+from detail_scraper import enrich_batch
 from gov_scraper import scrape_source
 from matcher import match_opportunities
 from notifier import notify_user
@@ -85,6 +86,34 @@ def run_daily_check():
             area_opportunities[area_id] = area_opps
 
         logger.info("スクレイピング完了: 合計 %d件", stats["opportunities_scraped"])
+
+        # =====================================================
+        # Phase 1.5: 詳細ページ取得（detail_url有 & 未取得の案件）
+        # =====================================================
+        try:
+            unenriched = db.get_unenriched_opportunities(limit=500)
+            if unenriched:
+                logger.info("=== 詳細取得フェーズ: %d件 ===", len(unenriched))
+                results = enrich_batch(unenriched, batch_size=10, delay=0.5)
+                enriched_count = 0
+                for opp_id, details in results:
+                    try:
+                        db.update_opportunity_details(opp_id, details)
+                        enriched_count += 1
+                    except Exception as exc:
+                        logger.debug("詳細更新失敗 %s: %s", opp_id, exc)
+                logger.info("詳細取得完了: %d/%d 成功", enriched_count, len(unenriched))
+                stats["details_enriched"] = enriched_count
+            else:
+                logger.info("詳細未取得の案件なし")
+                stats["details_enriched"] = 0
+        except Exception as exc:
+            logger.error("詳細取得フェーズ失敗: %s", exc)
+            stats["errors_count"] += 1
+            stats["error_details"].append({
+                "phase": "detail_enrich",
+                "error": str(exc),
+            })
 
         # =====================================================
         # Phase 2: ユーザーが存在する場合のみマッチング・通知

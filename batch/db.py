@@ -180,6 +180,44 @@ def upsert_opportunities(opportunities: list[dict], area_id: str, source_id: str
     return saved
 
 
+# --- Opportunity Detail Enrichment ---
+
+def get_unenriched_opportunities(limit: int = 500) -> list[dict]:
+    """詳細未取得の案件を取得する。"""
+    resp = requests.get(
+        _url(
+            "/opportunities?detail_fetched_at=is.null"
+            "&detail_url=not.is.null"
+            "&select=id,title,detail_url"
+            f"&order=scraped_at.desc&limit={limit}"
+        ),
+        headers=_headers(),
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def update_opportunity_details(opp_id: str, details: dict):
+    """案件の詳細フィールドを更新する。"""
+    from datetime import datetime, timezone
+
+    body = {"detail_fetched_at": datetime.now(timezone.utc).isoformat()}
+
+    for key in ("published_date", "deadline", "budget", "requirements",
+                "detailed_summary", "difficulty"):
+        val = details.get(key)
+        if val is not None:
+            body[key] = val
+
+    requests.patch(
+        _url(f"/opportunities?id=eq.{opp_id}"),
+        headers=_headers("return=minimal"),
+        json=body,
+        timeout=10,
+    )
+
+
 # --- User Opportunities (Match Results) ---
 
 def save_user_opportunities(user_id: str, matches: list[dict]):
