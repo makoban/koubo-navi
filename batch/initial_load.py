@@ -180,6 +180,7 @@ def fetch_kkj_opportunities(lg_code, start_date, end_date):
         "LG_Code": lg_code,
         "Start_Date": start_date,
         "End_Date": end_date,
+        "Count": "1000",
     }
     resp = requests.get(KKJ_API, params=params, timeout=30)
     resp.raise_for_status()

@@ -1,5 +1,5 @@
-// 公募ナビAI v2.6
-// 案件カード改善: 都道府県表示・締切日・要約
+// 公募ナビAI v2.7
+// Fix: AI詳細分析キャッシュ配列修正、トライアルティア制限、KKJ API Count=1000
 
 // ---------------------------------------------------------------------------
 // Config
@@ -761,7 +761,7 @@ async function loadOpportunities() {
 function renderOpportunities(items) {
   const list = document.getElementById("opportunityList");
   const countEl = document.getElementById("oppCount");
-  const visibleCount = (currentTier === "free") ? Math.min(5, items.length) : items.length;
+  const visibleCount = currentTier === "paid" ? items.length : currentTier === "trial" ? Math.min(10, items.length) : Math.min(5, items.length);
   countEl.textContent = `${items.length}件`;
 
   if (items.length === 0) {
@@ -784,7 +784,7 @@ function renderOpportunities(items) {
     const rec = item.recommendation || "";
     const rank = item.rank_position || (idx + 1);
     const oppId = item.opportunity_id || opp.id || "";
-    const isBlurred = (currentTier === "free") && idx >= visibleCount;
+    const isBlurred = (currentTier !== "paid") && idx >= visibleCount;
 
     const areaName = AREA_NAMES[opp.area_id] || opp.area_id || "";
     const deadlineStr = opp.deadline || "";
@@ -816,12 +816,15 @@ function renderOpportunities(items) {
     `;
   }).join("");
 
-  // Upgrade CTA for free tier
-  if (currentTier === "free" && items.length > visibleCount) {
+  // Upgrade CTA for free/trial tier
+  if (currentTier !== "paid" && items.length > visibleCount) {
+    const ctaText = currentTier === "trial"
+      ? "有料プランにアップグレードすると全件確認できます"
+      : "有料プランにアップグレードすると全件確認できます";
     html += `
       <div class="upgrade-cta">
         <p><strong>${items.length - visibleCount}件</strong>の案件がぼかし表示されています</p>
-        <p>有料プランにアップグレードすると全件確認できます</p>
+        <p>${ctaText}</p>
         <button class="btn btn--primary" onclick="switchTab('subscription')">プランをアップグレード</button>
       </div>
     `;

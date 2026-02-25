@@ -55,7 +55,7 @@ def _scrape_kkj_api(source: dict) -> list[dict]:
 
     # URL にすでにパラメータがある場合は追加
     sep = "&" if "?" in source_url else "?"
-    full_url = f"{source_url}{sep}Start_Date={start_date}&End_Date={end_date}"
+    full_url = f"{source_url}{sep}Start_Date={start_date}&End_Date={end_date}&Count=1000"
 
     try:
         resp = requests.get(full_url, timeout=30)

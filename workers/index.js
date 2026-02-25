@@ -385,7 +385,7 @@ async function handleGetOpportunities(request, env) {
   const { user_id } = await getUserFromJWT(request, env);
   if (!user_id) return errorResponse("認証が必要です", 401);
 
-  // ティア判定
+  // ティア判定: active(Stripe決済済み) / trial(無料トライアル中) / free(期限切れ)
   const userResult = await supabaseRequest(
     `/koubo_users?id=eq.${user_id}&select=status,trial_ends_at`,
     "GET", null, env
@@ -393,10 +393,11 @@ async function handleGetOpportunities(request, env) {
   const user = userResult.data?.[0] || {};
   const now = new Date();
   const trialEnd = user.trial_ends_at ? new Date(user.trial_ends_at) : null;
-  const isPaid = user.status === "active" ||
-    (user.status === "trial" && trialEnd && trialEnd > now);
-  const tierMaxResults = isPaid ? 100 : 35;  // free: 5表示 + 30ぼかし
-  const tier = isPaid ? "paid" : "free";
+  const isActive = user.status === "active";
+  const isTrial = user.status === "trial" && trialEnd && trialEnd > now;
+  // paid=全件表示, trial=10件表示+ぼかし25件, free=5件表示+ぼかし30件
+  const tier = isActive ? "paid" : isTrial ? "trial" : "free";
+  const tierMaxResults = isActive ? 100 : 35;
 
   const url = new URL(request.url);
   const scoreMin = parseInt(url.searchParams.get("score_min") || "0");
@@ -489,7 +490,7 @@ async function handleGetOpportunities(request, env) {
     total_unfiltered: totalUnfiltered,
     tier,
     max_results: tierMaxResults,
-    visible_count: isPaid ? items.length : Math.min(5, items.length),
+    visible_count: isActive ? items.length : isTrial ? Math.min(10, items.length) : Math.min(5, items.length),
   });
 }
 
@@ -513,7 +514,10 @@ async function handleAnalyzeOpportunity(request, env) {
   );
   const existing = cached.data?.[0];
   if (existing?.detailed_analysis) {
-    return jsonResponse(existing.detailed_analysis);
+    let cachedAnalysis = existing.detailed_analysis;
+    // Gemini配列ラッピングバグの修正（過去にDBに保存されたデータ対応）
+    if (Array.isArray(cachedAnalysis)) cachedAnalysis = cachedAnalysis[0] || {};
+    return jsonResponse(cachedAnalysis);
   }
 
   // 案件データを取得
