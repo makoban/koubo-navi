@@ -1,5 +1,5 @@
-// 公募ナビAI v2.5
-// LP + Onboarding + Dashboard（エリア管理・フィルター改善）
+// 公募ナビAI v2.6
+// 案件カード改善: 都道府県表示・締切日・要約
 
 // ---------------------------------------------------------------------------
 // Config
@@ -10,6 +10,24 @@ const SUPABASE_URL = "https://ypyrjsdotkeyvzequdez.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_l5yNWlXOZAHABwlbEalGng_R8zioydf";
 const GOOGLE_CLIENT_ID = "318879736677-7mhvrrr6fq4d8ngkaahlulb9nu64hskp.apps.googleusercontent.com";
 const MAX_AREAS = 3;
+
+const AREA_NAMES = {
+  "hokkaido": "北海道", "aomori": "青森県", "iwate": "岩手県", "miyagi": "宮城県",
+  "akita": "秋田県", "yamagata": "山形県", "fukushima": "福島県",
+  "ibaraki": "茨城県", "tochigi": "栃木県", "gunma": "群馬県", "saitama": "埼玉県",
+  "chiba": "千葉県", "tokyo": "東京都", "kanagawa": "神奈川県",
+  "niigata": "新潟県", "toyama": "富山県", "ishikawa": "石川県", "fukui": "福井県",
+  "yamanashi": "山梨県", "nagano": "長野県", "gifu": "岐阜県", "shizuoka": "静岡県",
+  "aichi": "愛知県", "mie": "三重県",
+  "shiga": "滋賀県", "kyoto": "京都府", "osaka": "大阪府", "hyogo": "兵庫県",
+  "nara": "奈良県", "wakayama": "和歌山県",
+  "tottori": "鳥取県", "shimane": "島根県", "okayama": "岡山県", "hiroshima": "広島県",
+  "yamaguchi": "山口県",
+  "tokushima": "徳島県", "kagawa": "香川県", "ehime": "愛媛県", "kochi": "高知県",
+  "fukuoka": "福岡県", "saga": "佐賀県", "nagasaki": "長崎県", "kumamoto": "熊本県",
+  "oita": "大分県", "miyazaki": "宮崎県", "kagoshima": "鹿児島県", "okinawa": "沖縄県",
+  "national": "全国",
+};
 
 // ---------------------------------------------------------------------------
 // State
@@ -768,6 +786,10 @@ function renderOpportunities(items) {
     const oppId = item.opportunity_id || opp.id || "";
     const isBlurred = (currentTier === "free") && idx >= visibleCount;
 
+    const areaName = AREA_NAMES[opp.area_id] || opp.area_id || "";
+    const deadlineStr = opp.deadline || "";
+    const summaryText = opp.summary || "";
+
     return `
       <div class="opp-card ${isBlurred ? 'opp-card--blurred' : ''}" id="opp-${escapeHtml(oppId)}">
         ${isBlurred ? '<div class="opp-card__blur-overlay" onclick="switchTab(\'subscription\')"><span>有料プランで表示</span></div>' : ''}
@@ -776,14 +798,17 @@ function renderOpportunities(items) {
         <div class="opp-card__body">
           <div class="opp-card__title">${escapeHtml(opp.title || item.title || "不明")}</div>
           <div class="opp-card__meta">
-            ${escapeHtml(opp.organization || "")} / ${escapeHtml(opp.category || "")} / ${escapeHtml(opp.method || "")}
-            ${opp.deadline ? ` / 締切: ${opp.deadline}` : ""}
+            ${areaName ? `<span class="opp-card__area">${escapeHtml(areaName)}</span>` : ""}
+            ${escapeHtml(opp.organization || "")}
+            ${opp.category ? ` / ${escapeHtml(opp.category)}` : ""}
+            ${opp.method ? ` / ${escapeHtml(opp.method)}` : ""}
           </div>
+          ${deadlineStr ? `<div class="opp-card__deadline">締切: ${escapeHtml(deadlineStr)}</div>` : ""}
+          ${summaryText ? `<div class="opp-card__summary">${escapeHtml(summaryText)}</div>` : ""}
           ${rec ? `<div class="opp-card__reason">${escapeHtml(rec)}</div>` : ""}
           <div class="opp-card__actions">
             ${opp.detail_url ? `<a href="${escapeHtml(opp.detail_url)}" target="_blank" class="btn btn--outline btn--sm">詳細を見る</a>` : ""}
             <button class="btn btn--primary btn--sm" onclick="analyzeOpportunity('${escapeHtml(oppId)}')">AI詳細分析</button>
-            ${rec ? `<span class="keyword-tag">${escapeHtml(rec)}</span>` : ""}
           </div>
           <div class="opp-card__analysis hidden" id="analysis-${escapeHtml(oppId)}"></div>
         </div>

@@ -5,6 +5,7 @@ HTML スクレイピング + Gemini 抽出と、kkj.go.jp API の2方式に対�
 """
 
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from xml.etree import ElementTree
 
@@ -131,19 +132,65 @@ def _extract_deadline(sr) -> str | None:
         raw = _xml_text(sr, tag)
         if raw:
             try:
-                # ISO形式 "2026-02-28T17:00:00+09:00" → "2026-02-28"
                 return raw[:10]
             except Exception:
                 pass
 
-    # ProjectDescription から締切日を推測（YYYY-MM-DD パターン）
     desc = _xml_text(sr, "ProjectDescription") or ""
-    import re
+
+    # ISO形式 YYYY-MM-DD パターン
     date_match = re.search(r"(\d{4}-\d{2}-\d{2})", desc)
     if date_match:
         return date_match.group(1)
 
+    # 和暦パターン: 公開終了日・提出期限・入札期限 等から抽出
+    wareki = _extract_wareki_deadline(desc)
+    if wareki:
+        return wareki
+
     return None
+
+
+def _extract_wareki_deadline(text: str) -> str | None:
+    """テキストから和暦の締切日を抽出してYYYY-MM-DDに変換する。"""
+    # 優先順: 提出期限 > 入札期限 > 公開終了日 > 締切日
+    patterns = [
+        r"提出期限[^\d]*(\d{2})年(\d{1,2})月(\d{1,2})日",
+        r"入札期限[^\d]*(\d{2})年(\d{1,2})月(\d{1,2})日",
+        r"公開終了日[^\d]*(\d{2})年(\d{1,2})月(\d{1,2})日",
+        r"締[切め]日?[^\d]*(\d{2})年(\d{1,2})月(\d{1,2})日",
+    ]
+    for pat in patterns:
+        m = re.search(pat, text)
+        if m:
+            iso = _wareki_to_iso(m.group(1), m.group(2), m.group(3))
+            if iso and _is_reasonable_deadline(iso):
+                return iso
+
+    return None
+
+
+def _wareki_to_iso(year_str: str, month_str: str, day_str: str) -> str | None:
+    """令和の年月日をYYYY-MM-DD形式に変換する。"""
+    try:
+        year = 2018 + int(year_str)
+        month = int(month_str)
+        day = int(day_str)
+        return f"{year:04d}-{month:02d}-{day:02d}"
+    except (ValueError, TypeError):
+        return None
+
+
+def _is_reasonable_deadline(iso_date: str) -> bool:
+    """締切日が合理的か判定（公告から6ヶ月以内）。契約期間の終了日を除外する。"""
+    try:
+        from datetime import datetime
+        dt = datetime.strptime(iso_date, "%Y-%m-%d")
+        now = datetime.now()
+        # 過去1年以内〜未来6ヶ月以内なら入札締切として妥当
+        return (now - timedelta(days=365)) <= dt <= (now + timedelta(days=180))
+    except ValueError:
+        return False
 
 
 def _map_category(raw: str) -> str:
@@ -168,24 +215,59 @@ def _map_method(raw: str) -> str:
 
 
 def _clean_summary(raw: str, title: str) -> str | None:
-    """ProjectDescription から余分なメタデータを除去し、要約を作成する。"""
+    """ProjectDescription から有用な要約を生成する。"""
     if not raw:
         return None
-    text = raw
-    if text.startswith(title):
-        text = text[len(title):].strip()
-    lines = []
-    for line in text.split("\n"):
-        line = line.strip()
-        if not line:
-            continue
-        if line.startswith("調達案件番号") or line.startswith("調達種別"):
-            continue
-        lines.append(line)
-    clean = " ".join(lines)
-    if len(clean) > 200:
-        clean = clean[:197] + "..."
-    return clean if clean else None
+
+    # KKJメタデータから構造化情報を抽出して要約を構築
+    parts = []
+
+    # 調達品目分類（具体的な品目カテゴリ）
+    item_cat = re.search(r"調達品目分類(.+?)(?:公告内容|調達機関|$)", raw)
+    if item_cat:
+        cat_text = item_cat.group(1).strip()
+        if cat_text and cat_text != title:
+            parts.append(cat_text)
+
+    # 公告内容（実際の告知テキスト）から最初の意味のある文を抽出
+    content = re.search(r"公告内容(.+)", raw, re.DOTALL)
+    if content:
+        ct = content.group(1).strip()
+        # 「公 示 第 NN 号」「入 札 公 告」等のヘッダーを除去
+        ct = re.sub(r"公\s*示\s*第\s*\d+\s*号\s*", "", ct)
+        ct = re.sub(r"入\s*札\s*公\s*告\s*", "", ct)
+        ct = ct.strip()
+        if ct:
+            # 最初の意味のある部分を取得
+            ct = ct[:120].strip()
+            if len(ct) > 3:
+                parts.append(ct)
+
+    # 分類（物品・役務等）
+    bunrui = re.search(r"分類([^調達公開]+?)(?:調達案件名称|$)", raw)
+    if bunrui and not parts:
+        b_text = bunrui.group(1).strip()
+        if b_text:
+            parts.append(f"分類: {b_text}")
+
+    # partsが空なら、タイトル除去後の残りテキストから生成
+    if not parts:
+        text = raw
+        if text.startswith(title):
+            text = text[len(title):].strip()
+        # メタデータ行を除去
+        for prefix in ("調達案件番号", "調達種別", "分類", "調達案件名称",
+                        "公開開始日", "公開終了日", "調達機関", "調達機関所在地"):
+            text = re.sub(rf"{prefix}[^\n]*", "", text)
+        text = re.sub(r"令和\d{2}年\d{1,2}月\d{1,2}日", "", text)
+        text = " ".join(text.split()).strip()
+        if text:
+            parts.append(text[:120])
+
+    summary = "。".join(parts)
+    if len(summary) > 200:
+        summary = summary[:197] + "..."
+    return summary if summary else None
 
 
 def _scrape_html(source: dict) -> list[dict]:
