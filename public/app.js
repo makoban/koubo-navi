@@ -847,12 +847,18 @@ async function analyzeOpportunity(oppId) {
     return;
   }
 
+  // セッション確認: 未ログインならログインモーダル表示
+  const token = await getAccessToken();
+  if (!token) {
+    showLoginModal();
+    return;
+  }
+
   // ローディング表示
   panel.classList.remove("hidden");
   panel.innerHTML = `<div class="analysis-loading">AI が詳細分析中...</div>`;
 
   try {
-    const token = await getAccessToken();
     const resp = await fetch(`${WORKER_BASE}/api/opportunity/analyze`, {
       method: "POST",
       headers: {
