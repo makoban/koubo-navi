@@ -804,11 +804,11 @@ function renderOpportunities(items) {
           ${deadlineStr ? `<div class="opp-card__deadline">締切: ${escapeHtml(deadlineStr)}</div>` : ""}
           ${summaryText ? `<div class="opp-card__summary">${escapeHtml(summaryText)}</div>` : ""}
           ${rec ? `<div class="opp-card__reason">${escapeHtml(rec)}</div>` : ""}
-          <div class="opp-card__actions">
+          ${!isBlurred ? `<div class="opp-card__actions">
             ${opp.detail_url ? `<a href="${escapeHtml(opp.detail_url)}" target="_blank" class="btn btn--outline btn--sm">詳細を見る</a>` : ""}
             <button class="btn btn--primary btn--sm" onclick="analyzeOpportunity('${escapeHtml(oppId)}')">AI詳細分析</button>
           </div>
-          <div class="opp-card__analysis hidden" id="analysis-${escapeHtml(oppId)}"></div>
+          <div class="opp-card__analysis hidden" id="analysis-${escapeHtml(oppId)}"></div>` : ""}
         </div>
       </div>
     `;
