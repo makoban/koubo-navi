@@ -55,9 +55,7 @@ function initSupabase() {
     console.warn("Supabase SDK not loaded");
     return;
   }
-  supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { flowType: "implicit" },
-  });
+  supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   supabaseClient.auth.onAuthStateChange((event, session) => {
     if (event === "INITIAL_SESSION" || event === "SIGNED_IN") {
