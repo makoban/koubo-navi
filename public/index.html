@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>公募ナビAI - 公募・入札案件をAIが毎日自動で見つける</title>
   <meta name="description" content="行政の公募・入札案件を、AIが毎日自動でチェック。貴社の事業にマッチする案件だけをメールでお届けします。">
-  <link rel="stylesheet" href="style.css?v=3.1a">
+  <link rel="stylesheet" href="style.css?v=3.1b">
   <!-- Supabase JS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
@@ -81,7 +81,7 @@
     <!-- Service Sample (Browser Mockup) -->
     <section class="service-sample" id="service-sample">
       <h2 class="section-title">実際の画面イメージ</h2>
-      <p class="section-desc">AIが貴社の事業内容を分析し、マッチする公募・入札案件をスコア付きで毎日お届けします</p>
+      <p class="section-desc">AIが貴社の事業内容を分析し、業種にマッチする公募・入札案件を毎日お届けします</p>
       <div class="section-divider"></div>
 
       <div class="mockup">
@@ -93,55 +93,42 @@
         </div>
         <div class="mockup__body">
           <div class="mockup__header">
-            <h3>本日のマッチング案件</h3>
-            <span class="mockup__date">2026年2月24日（月）</span>
+            <h3>マッチング案件</h3>
           </div>
 
-          <!-- High match -->
           <div class="mockup-opp">
-            <div class="mockup-opp__score mockup-opp__score--high">
-              92%
-              <span class="mockup-opp__badge mockup-opp__badge--high">強く推奨</span>
-            </div>
             <div class="mockup-opp__body">
               <div class="mockup-opp__title">DX推進に係る業務効率化ツール導入支援業務委託</div>
               <div class="mockup-opp__meta">愛知県 総務部 デジタル推進課 / 企画競争（プロポーザル） / 締切: 3月15日</div>
-              <div class="mockup-opp__reason">貴社のAI開発・DX推進コンサルティング実績と高い親和性。ノーコードツール導入支援の経験が直接活かせます。</div>
-              <div class="mockup-opp__tags">
-                <span class="mockup-opp__tag">DX推進</span>
-                <span class="mockup-opp__tag">AI活用</span>
-                <span class="mockup-opp__tag">業務効率化</span>
+              <div class="mockup-opp__reason">自治体のDX推進を目的とした業務効率化ツールの選定・導入支援・運用サポートを行う業務委託です。</div>
+              <div class="mockup-opp__actions">
+                <span class="btn btn--outline btn--sm">詳細を見る</span>
+                <span class="btn btn--primary btn--sm">AI詳細分析</span>
               </div>
             </div>
           </div>
 
-          <!-- Mid match -->
           <div class="mockup-opp">
-            <div class="mockup-opp__score mockup-opp__score--mid">
-              74%
-              <span class="mockup-opp__badge mockup-opp__badge--mid">推奨</span>
-            </div>
             <div class="mockup-opp__body">
               <div class="mockup-opp__title">公共施設予約システムの更改及び運用保守業務</div>
               <div class="mockup-opp__meta">名古屋市 市民経済局 / 一般競争入札 / 締切: 3月22日</div>
-              <div class="mockup-opp__reason">Webアプリケーション開発の知見を活かせる案件。クラウド基盤の構築・運用経験が評価ポイント。</div>
-              <div class="mockup-opp__tags">
-                <span class="mockup-opp__tag">Web開発</span>
-                <span class="mockup-opp__tag">クラウド</span>
+              <div class="mockup-opp__reason">既存の公共施設予約システムをクラウド基盤へ移行し、継続的な運用保守を行う業務です。</div>
+              <div class="mockup-opp__actions">
+                <span class="btn btn--outline btn--sm">詳細を見る</span>
+                <span class="btn btn--primary btn--sm">AI詳細分析</span>
               </div>
             </div>
           </div>
 
-          <!-- Low match -->
           <div class="mockup-opp">
-            <div class="mockup-opp__score mockup-opp__score--low">
-              38%
-              <span class="mockup-opp__badge mockup-opp__badge--low">参考</span>
-            </div>
             <div class="mockup-opp__body">
               <div class="mockup-opp__title">庁舎空調設備保守点検業務委託</div>
               <div class="mockup-opp__meta">東京都 財務局 / 指名競争入札 / 締切: 3月10日</div>
-              <div class="mockup-opp__reason">IT分野との関連性は低いですが、IoTセンサー管理の観点で一部対応可能な領域があります。</div>
+              <div class="mockup-opp__reason">庁舎内空調設備の定期保守点検および緊急時対応を含む業務委託です。</div>
+              <div class="mockup-opp__actions">
+                <span class="btn btn--outline btn--sm">詳細を見る</span>
+                <span class="btn btn--primary btn--sm">AI詳細分析</span>
+              </div>
             </div>
           </div>
         </div>
@@ -304,29 +291,23 @@
     <!-- Match Score Detail -->
     <section class="sample-section">
       <h2 class="section-title">AIマッチングの仕組み</h2>
-      <p class="section-desc">貴社の事業内容と各案件の適合度をAIがスコア化。注目すべき案件を一目で把握できます。</p>
+      <p class="section-desc">貴社の業種カテゴリに合致する案件を自動抽出。気になる案件はAIが詳細分析します。</p>
       <div class="section-divider"></div>
       <div class="sample-cards">
-        <div class="sample-card sample-card--high">
-          <div class="sample-card__score">85%</div>
-          <div class="sample-card__badge">強く推奨</div>
-          <h4>ノーコード・ローコードツール運用業務</h4>
-          <p>愛知県 総務部 / 企画競争</p>
-          <p class="sample-card__reason">DX推進・業務効率化に合致。AI導入支援の知見も活用可能。</p>
+        <div class="sample-card">
+          <div class="sample-card__step">1</div>
+          <h4>業種カテゴリで自動マッチ</h4>
+          <p>登録時にAIが貴社の業種を判定。IT・DX、建設・土木など10カテゴリで案件を自動抽出します。</p>
         </div>
-        <div class="sample-card sample-card--mid">
-          <div class="sample-card__score">68%</div>
-          <div class="sample-card__badge">推奨</div>
-          <h4>会計書類の電子化業務委託</h4>
-          <p>名古屋市 会計局 / 一般競争入札</p>
-          <p class="sample-card__reason">IT・デジタル化の知見を活かせる。文書管理システムの経験が有利。</p>
+        <div class="sample-card">
+          <div class="sample-card__step">2</div>
+          <h4>案件一覧を毎日更新</h4>
+          <p>毎朝8:00に全国の行政サイトをチェック。貴社の業種にマッチする新着案件をお届けします。</p>
         </div>
-        <div class="sample-card sample-card--low">
-          <div class="sample-card__score">42%</div>
-          <div class="sample-card__badge">検討可</div>
-          <h4>施設管理システム保守業務</h4>
-          <p>東京都 財務局 / 指名競争入札</p>
-          <p class="sample-card__reason">関連性あり。保守運用の実績があれば十分対応可能。</p>
+        <div class="sample-card">
+          <div class="sample-card__step">3</div>
+          <h4>AI詳細分析でマッチ度を確認</h4>
+          <p>気になる案件のボタンを押すと、AIが貴社との適合度・懸念点・具体的アクションを分析します。</p>
         </div>
       </div>
     </section>
@@ -643,6 +624,6 @@
     </div>
   </footer>
 
-  <script src="app.js?v=3.1a"></script>
+  <script src="app.js?v=3.1b"></script>
 </body>
 </html>
