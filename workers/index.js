@@ -484,7 +484,7 @@ async function handleGetOpportunities(request, env) {
     tier,
     max_results: tierMaxResults,
     user_industries: userIndustries,
-    visible_count: isActive ? items.length : isTrial ? Math.min(10, items.length) : Math.min(5, items.length),
+    visible_count: (isActive || isTrial) ? items.length : Math.min(5, items.length),
   });
 }
 
@@ -582,7 +582,10 @@ ${detailText ? `\n【案件詳細ページの内容】\n${detailText}\n` : ""}
 
 以下のJSON形式で出力してください:
 {
+  "match_score": 75,
+  "recommendation": "推奨",
   "summary": "総合評価（200文字程度）",
+  "match_keywords": ["関連キーワード1", "キーワード2", "キーワード3"],
   "match_points": ["企業とマッチするポイント1", "ポイント2", "ポイント3"],
   "concerns": ["懸念点・リスク1", "懸念点2"],
   "actions": ["具体的なアクション1", "アクション2", "アクション3"],
@@ -590,6 +593,13 @@ ${detailText ? `\n【案件詳細ページの内容】\n${detailText}\n` : ""}
   "recommended_preparation_days": 14
 }
 
+match_score: 企業と案件のマッチ度を0〜100の整数で評価。事業分野・実績・強みとの親和性を総合的に判断。
+recommendation: match_scoreに応じて以下から1つ選択:
+  80以上 → "強く推奨"
+  60以上 → "推奨"
+  40以上 → "要検討"
+  40未満 → "対象外"
+match_keywords: この案件に関連する企業キーワードを3〜5個生成。
 match_pointsは3〜5個、concernsは2〜3個、actionsは3〜5個生成してください。
 recommended_preparation_daysは準備に必要な日数の目安です。`;
 
@@ -609,7 +619,10 @@ recommended_preparation_daysは準備に必要な日数の目安です。`;
   }
 
   const geminiData = await geminiResp.json();
-  if (!geminiResp.ok) return errorResponse("AI分析に失敗しました", 502);
+  if (!geminiResp.ok) {
+    const detail = geminiData?.error?.message || JSON.stringify(geminiData).slice(0, 200);
+    return errorResponse(`AI分析に失敗しました: ${detail}`, 502);
+  }
 
   const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
   let analysis;
