@@ -1143,47 +1143,29 @@ body {
 }
 .opp-card:hover { border-color: var(--border-gold); }
 
-/* Score column (left) — mockup-opp__score 準拠 */
-.opp-card__score {
-  font-family: var(--font-heading);
-  font-size: 24px;
-  font-weight: 800;
-  min-width: 52px;
-  text-align: center;
-  line-height: 1.2;
-  flex-shrink: 0;
-}
-.opp-card__score-num { display: block; }
-.opp-card__score-label {
-  font-size: 10px;
-  display: block;
-  margin-top: 2px;
-}
-.opp-card__score--high .opp-card__score-num,
-.opp-card__score--high .opp-card__score-label { color: var(--success); }
-.opp-card__score--mid .opp-card__score-num,
-.opp-card__score--mid .opp-card__score-label { color: var(--accent); }
-.opp-card__score--low .opp-card__score-num,
-.opp-card__score--low .opp-card__score-label { color: var(--text-muted); }
-.opp-card__score--none .opp-card__score-num,
-.opp-card__score--none .opp-card__score-label { color: var(--text-muted); }
+/* Dates row */
+.opp-card__dates { display: flex; gap: 16px; margin-bottom: 6px; font-size: 12px; }
+.opp-card__date { color: var(--text-muted); }
+.opp-card__deadline { color: var(--warning); font-weight: 500; }
 
-/* Body (right) — mockup-opp__body 準拠 */
-.opp-card__body { flex: 1; min-width: 0; }
-.opp-card__title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
-.opp-card__meta { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
-.opp-card__summary { font-size: 12px; color: var(--text-secondary); padding-top: 6px; border-top: 1px solid var(--border); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-
-/* Keyword tags — mockup-opp__tag 準拠 */
-.opp-card__tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.opp-card__tag {
-  font-size: 10px;
-  padding: 2px 8px;
+/* Industry badge */
+.opp-card__industry {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 10px;
   border-radius: 12px;
   background: var(--accent-light);
   color: var(--accent);
   font-weight: 500;
+  margin-bottom: 6px;
 }
+
+/* Body */
+.opp-card__body { flex: 1; min-width: 0; }
+.opp-card__title { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; line-height: 1.4; }
+.opp-card__meta { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.opp-card__summary { font-size: 13px; color: var(--text-secondary); padding-top: 6px; border-top: 1px solid var(--border); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
 
 .opp-card__actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
 
@@ -1525,7 +1507,6 @@ body {
   .header__title { font-size: 16px; }
   .header__badge { display: none; }
   .opp-card { flex-direction: column; gap: 8px; }
-  .opp-card__score { text-align: left; }
   .proof-bar__inner { flex-direction: column; gap: 28px; }
   .proof-bar__number { font-size: 28px; }
   .section-title { font-size: 24px; }

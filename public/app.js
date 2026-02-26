@@ -716,38 +716,31 @@ function renderOpportunities(items) {
     const opp = item.opportunities || {};
     const oppId = item.opportunity_id || opp.id || "";
     const isBlurred = (currentTier !== "paid" && currentTier !== "trial") && idx >= visibleCount;
-    const analysis = item.detailed_analysis || {};
 
     const areaName = AREA_NAMES[opp.area_id] || opp.area_id || "";
     const deadlineStr = opp.deadline || "";
-    const summaryText = analysis.summary || opp.detailed_summary || opp.summary || "";
-    const matchScore = analysis.match_score;
-    const recommendation = analysis.recommendation || "";
-    const matchKeywords = analysis.match_keywords || [];
-
-    // スコア色判定
-    const scoreClass = matchScore >= 80 ? "high" : matchScore >= 60 ? "mid" : matchScore >= 40 ? "low" : "none";
-    const hasScore = typeof matchScore === "number";
+    const scrapedAt = opp.scraped_at ? opp.scraped_at.split("T")[0] : "";
+    const summaryText = opp.detailed_summary || opp.summary || "";
+    const industryCategory = opp.industry_category || "";
 
     return `
       <div class="opp-card ${isBlurred ? 'opp-card--blurred' : ''}" id="opp-${escapeHtml(oppId)}">
         ${isBlurred ? '<div class="opp-card__blur-overlay" onclick="switchTab(\'subscription\')"><span>有料プランで表示</span></div>' : ''}
-        ${hasScore ? `<div class="opp-card__score opp-card__score--${scoreClass}">
-          <span class="opp-card__score-num">${matchScore}%</span>
-          <span class="opp-card__score-label">${escapeHtml(recommendation)}</span>
-        </div>` : ''}
         <div class="opp-card__body">
           <div class="opp-card__title">${escapeHtml(opp.title || item.title || "不明")}</div>
           <div class="opp-card__meta">
             ${areaName ? `${escapeHtml(areaName)} ` : ""}${escapeHtml(opp.organization || "")}
             ${opp.method ? ` / ${escapeHtml(opp.method)}` : ""}
-            ${deadlineStr ? ` / 締切: ${escapeHtml(deadlineStr)}` : ""}
           </div>
+          <div class="opp-card__dates">
+            ${scrapedAt ? `<span class="opp-card__date">登録: ${escapeHtml(scrapedAt)}</span>` : ""}
+            ${deadlineStr ? `<span class="opp-card__deadline">締切: ${escapeHtml(deadlineStr)}</span>` : ""}
+          </div>
+          ${industryCategory ? `<span class="opp-card__industry">${escapeHtml(industryCategory)}</span>` : ""}
           ${summaryText ? `<div class="opp-card__summary">${escapeHtml(summaryText)}</div>` : ""}
-          ${matchKeywords.length > 0 ? `<div class="opp-card__tags">${matchKeywords.map(kw => `<span class="opp-card__tag">${escapeHtml(kw)}</span>`).join("")}</div>` : ""}
           ${!isBlurred ? `<div class="opp-card__actions">
             ${opp.detail_url ? `<a href="${escapeHtml(opp.detail_url)}" target="_blank" class="btn btn--outline btn--sm">詳細を見る</a>` : ""}
-            <button class="btn btn--primary btn--sm" onclick="analyzeOpportunity('${escapeHtml(oppId)}')">${hasScore ? 'AI詳細を見る' : 'AI詳細分析'}</button>
+            <button class="btn btn--primary btn--sm" onclick="analyzeOpportunity('${escapeHtml(oppId)}')">AI詳細分析</button>
           </div>
           <div class="opp-card__analysis hidden" id="analysis-${escapeHtml(oppId)}"></div>` : ""}
         </div>
@@ -812,29 +805,6 @@ async function analyzeOpportunity(oppId) {
     const analysis = await resp.json();
     panel.innerHTML = renderDetailedAnalysis(analysis);
 
-    // カードにスコアを反映
-    const card = document.getElementById(`opp-${oppId}`);
-    if (card && typeof analysis.match_score === "number") {
-      const scoreClass = analysis.match_score >= 80 ? "high" : analysis.match_score >= 60 ? "mid" : analysis.match_score >= 40 ? "low" : "none";
-      const existingScore = card.querySelector(".opp-card__score");
-      const scoreHtml = `<div class="opp-card__score opp-card__score--${scoreClass}">
-        <span class="opp-card__score-num">${analysis.match_score}%</span>
-        <span class="opp-card__score-label">${escapeHtml(analysis.recommendation || "")}</span>
-      </div>`;
-      if (existingScore) {
-        existingScore.outerHTML = scoreHtml;
-      } else {
-        card.insertAdjacentHTML("afterbegin", scoreHtml);
-      }
-      // タグも反映
-      if (analysis.match_keywords && analysis.match_keywords.length > 0) {
-        const body = card.querySelector(".opp-card__body");
-        const existingTags = body.querySelector(".opp-card__tags");
-        const tagsHtml = `<div class="opp-card__tags">${analysis.match_keywords.map(kw => `<span class="opp-card__tag">${escapeHtml(kw)}</span>`).join("")}</div>`;
-        if (existingTags) existingTags.outerHTML = tagsHtml;
-        else { const actions = body.querySelector(".opp-card__actions"); if (actions) actions.insertAdjacentHTML("beforebegin", tagsHtml); }
-      }
-    }
   } catch (err) {
     panel.innerHTML = `<div class="analysis-loading" style="color:var(--danger)">分析エラー: ${escapeHtml(err.message)}</div>`;
   }
