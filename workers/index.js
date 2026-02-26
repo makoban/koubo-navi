@@ -532,9 +532,9 @@ async function handleGetStats(request, env) {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-  // 直近1週間の新着件数（deadline >= today の有効案件のみ）
+  // 直近1週間の新着件数（published_date基準、NULLは除外）
   const recentResp = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/opportunities?scraped_at=gte.${weekAgo}&or=(deadline.gte.${today},and(deadline.is.null,scraped_at.gte.${thirtyDaysAgo}))&select=id&limit=0`,
+    `${env.SUPABASE_URL}/rest/v1/opportunities?published_date=gte.${weekAgo}&published_date=not.is.null&select=id&limit=0`,
     {
       method: "GET",
       headers: {
