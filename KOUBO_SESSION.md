@@ -9,7 +9,7 @@
 - **本番URL**: https://koubo-navi.bantex.jp/
 - **Worker URL**: https://koubo-navi-proxy.ai-fudosan.workers.dev
 - **GitHub**: https://github.com/makoban/koubo-navi (branch: master)
-- **現在のバージョン**: v2.0
+- **現在のバージョン**: v2.7
 - **スクリーンショット保存場所**: C:\Users\banma\Pictures\Screenshots
 
 ## 技術構成
@@ -30,7 +30,7 @@
 koubo-navi/
   public/           # フロントエンド（GitHub Pages で配信）
     index.html       # LP + オンボーディング + ダッシュボード
-    app.js           # メインロジック (v2.0)
+    app.js           # メインロジック (v2.7)
     style.css        # スタイル
   workers/           # Cloudflare Worker
     index.js         # 全APIエンドポイント (13ルート)
@@ -153,3 +153,14 @@ koubo-navi/
 
 **中断箇所**:
 - Gemini APIキー再生成待ち → 新キーでE2Eテスト再実行
+
+### 2026-02-27 | フォルダ移動・整理
+
+**完了した作業**:
+1. フォルダ移動: `サービス/市場調査/koubo-navi/` → `サービス/公募ナビ/`
+2. Gitリポジトリ整合性確認OK
+3. node_modules 再インストール済み
+4. 旧フォルダ削除済み
+5. README.md 作成（クイックスタート・アーキテクチャ・ディレクトリ構成）
+6. 市場調査/docs/KOUBO_NAVI_SPEC.md 作成（仕様概要）
+7. バージョン v2.0 → v2.7 への更新を反映（複数のバグ修正・機能改善がコミット済み）

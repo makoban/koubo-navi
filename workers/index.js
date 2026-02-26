@@ -405,12 +405,21 @@ async function handleGetOpportunities(request, env) {
   const isActive = user.status === "active";
   const isTrial = user.status === "trial" && trialEnd && trialEnd > now;
   const tier = isActive ? "paid" : isTrial ? "trial" : "free";
-  const tierMaxResults = (isActive || isTrial) ? 100 : 35;
+  const isPaid = isActive || isTrial;
 
   const url = new URL(request.url);
-  const requestedLimit = parseInt(url.searchParams.get("limit") || "200");
-  const maxLimit = Math.min(requestedLimit, tierMaxResults);
+  const requestedLimit = parseInt(url.searchParams.get("limit") || "500");
   const industryFilter = url.searchParams.get("industry"); // 業種カテゴリフィルター
+
+  // ソートパラメータ
+  const sortParam = url.searchParams.get("sort") || "scraped_desc";
+  const SORT_MAP = {
+    "deadline_asc": "deadline.asc.nullslast",
+    "deadline_desc": "deadline.desc.nullslast",
+    "scraped_asc": "scraped_at.asc",
+    "scraped_desc": "scraped_at.desc",
+  };
+  const orderClause = SORT_MAP[sortParam] || "scraped_at.desc";
 
   // 1. ユーザーの登録エリアと業種カテゴリを取得
   const areasResult = await supabaseRequest(
@@ -426,18 +435,18 @@ async function handleGetOpportunities(request, env) {
   const userIndustries = profileResult.data?.[0]?.industry_categories || [];
 
   if (userAreaIds.length === 0) {
-    return jsonResponse({ opportunities: [], total: 0, total_unfiltered: 0, tier, max_results: tierMaxResults });
+    return jsonResponse({ opportunities: [], total: 0, total_unfiltered: 0, tier, is_paid: isPaid });
   }
 
   // 2. 業種カテゴリ + エリアで案件をフィルター
   const areaFilter = userAreaIds.map(id => encodeURIComponent(id)).join(",");
-  let queryPath = `/opportunities?area_id=in.(${areaFilter})&select=*&order=scraped_at.desc&limit=500`;
+  let queryPath = `/opportunities?area_id=in.(${areaFilter})&select=*&order=${orderClause}&limit=${requestedLimit}`;
 
   // 業種カテゴリフィルター（ユーザーの業種 or URL指定の業種）
   const filterCategories = industryFilter ? [industryFilter] : userIndustries;
   if (filterCategories.length > 0) {
     const catFilter = filterCategories.map(c => encodeURIComponent(c)).join(",");
-    queryPath = `/opportunities?area_id=in.(${areaFilter})&industry_category=in.(${catFilter})&select=*&order=scraped_at.desc&limit=500`;
+    queryPath = `/opportunities?area_id=in.(${areaFilter})&industry_category=in.(${catFilter})&select=*&order=${orderClause}&limit=${requestedLimit}`;
   }
 
   const oppResult = await supabaseRequest(queryPath, "GET", null, env);
@@ -445,10 +454,13 @@ async function handleGetOpportunities(request, env) {
 
   // 無効な案件を除外
   const today = new Date().toISOString().split("T")[0];
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
   const BAD_URLS = ["/pps-web-biz/UAA01/OAA0101", "/all.html"];
   const allOpps = (oppResult.data || []).filter(opp => {
-    // 期限切れ除外
+    // 期限切れ確定 → 非表示
     if (opp.deadline && opp.deadline < today) return false;
+    // deadline不明 かつ 30日以上前のデータ → 非表示
+    if (!opp.deadline && opp.scraped_at && opp.scraped_at.split("T")[0] < thirtyDaysAgo) return false;
     // 詳細URLなし or 壊れたURL → 非表示
     if (!opp.detail_url) return false;
     if (BAD_URLS.some(p => opp.detail_url.includes(p))) return false;
@@ -479,17 +491,79 @@ async function handleGetOpportunities(request, env) {
 
   const totalUnfiltered = items.length;
 
-  // ティア制限
-  items = items.slice(0, maxLimit);
+  // freeユーザー: 詳細フィールドをマスク（一覧は全件見れる）
+  if (!isPaid) {
+    items = items.map(item => {
+      const opp = item.opportunities;
+      item.opportunities = {
+        id: opp.id,
+        title: opp.title,
+        organization: opp.organization,
+        category: opp.category,
+        method: opp.method,
+        industry_category: opp.industry_category,
+        area_id: opp.area_id,
+        deadline: opp.deadline,
+        scraped_at: opp.scraped_at,
+        detail_url: opp.detail_url,
+        published_date: opp.published_date,
+      };
+      item.detailed_analysis = null;
+      return item;
+    });
+  }
 
   return jsonResponse({
     opportunities: items,
     total: items.length,
     total_unfiltered: totalUnfiltered,
     tier,
-    max_results: tierMaxResults,
+    is_paid: isPaid,
     user_industries: userIndustries,
-    visible_count: (isActive || isTrial) ? items.length : Math.min(5, items.length),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/stats - 公開統計API（認証不要）
+// ---------------------------------------------------------------------------
+
+async function handleGetStats(request, env) {
+  const today = new Date().toISOString().split("T")[0];
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+  // 直近1週間の新着件数（deadline >= today の有効案件のみ）
+  const recentResp = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/opportunities?scraped_at=gte.${weekAgo}&or=(deadline.gte.${today},and(deadline.is.null,scraped_at.gte.${thirtyDaysAgo}))&select=id&limit=0`,
+    {
+      method: "GET",
+      headers: {
+        "apikey": env.SUPABASE_SERVICE_KEY,
+        "Authorization": `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        "Prefer": "count=exact",
+      },
+    }
+  );
+  const recentCount = parseInt(recentResp.headers.get("Content-Range")?.split("/")[1] || "0");
+
+  // 有効な案件総数
+  const totalResp = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/opportunities?or=(deadline.gte.${today},and(deadline.is.null,scraped_at.gte.${thirtyDaysAgo}))&select=id&limit=0`,
+    {
+      method: "GET",
+      headers: {
+        "apikey": env.SUPABASE_SERVICE_KEY,
+        "Authorization": `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        "Prefer": "count=exact",
+      },
+    }
+  );
+  const totalCount = parseInt(totalResp.headers.get("Content-Range")?.split("/")[1] || "0");
+
+  return jsonResponse({
+    recent_week: recentCount,
+    total_active: totalCount,
+    updated_at: new Date().toISOString(),
   });
 }
 
@@ -500,6 +574,20 @@ async function handleGetOpportunities(request, env) {
 async function handleAnalyzeOpportunity(request, env) {
   const { user_id } = await getUserFromJWT(request, env);
   if (!user_id) return errorResponse("認証が必要です", 401);
+
+  // 無料ユーザーはAI詳細分析を拒否
+  const userResult = await supabaseRequest(
+    `/koubo_users?id=eq.${user_id}&select=status,trial_ends_at`,
+    "GET", null, env
+  );
+  const user = userResult.data?.[0] || {};
+  const now = new Date();
+  const trialEnd = user.trial_ends_at ? new Date(user.trial_ends_at) : null;
+  const isActive = user.status === "active";
+  const isTrial = user.status === "trial" && trialEnd && trialEnd > now;
+  if (!isActive && !isTrial) {
+    return errorResponse("AI詳細分析は有料プランの機能です", 403);
+  }
 
   let body;
   try { body = await request.json(); } catch { return errorResponse("不正なJSON", 400); }
@@ -993,6 +1081,7 @@ async function router(request, env, ctx) {
 
   if (path === "/api/analyze-company" && method === "POST") return handleAnalyzeCompany(request, env);
   if (path === "/api/areas" && method === "GET") return handleAreas(request, env);
+  if (path === "/api/stats" && method === "GET") return handleGetStats(request, env);
   if (path === "/api/user/profile" && method === "GET") return handleGetProfile(request, env);
   if (path === "/api/user/profile" && method === "PUT") return handlePutProfile(request, env);
   if (path === "/api/user/areas" && method === "PUT") return handlePutAreas(request, env);

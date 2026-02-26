@@ -18,7 +18,7 @@
       <div class="header__logo">
         <span class="header__icon">&#x1f4cb;</span>
         <span class="header__title">公募ナビAI</span>
-        <div class="header__badge">v3.1</div>
+        <div class="header__badge">v3.2</div>
       </div>
       <div class="header__actions" id="authArea">
         <button class="btn btn--outline btn--sm" id="loginBtn" onclick="showLoginModal()">ログイン</button>
@@ -60,16 +60,16 @@
     <section class="proof-bar">
       <div class="proof-bar__inner">
         <div class="proof-bar__item">
+          <div class="proof-bar__number" id="statRecentWeek">--</div>
+          <div class="proof-bar__label">直近1週間の新着</div>
+        </div>
+        <div class="proof-bar__item">
+          <div class="proof-bar__number" id="statTotalActive">--</div>
+          <div class="proof-bar__label">募集中の案件</div>
+        </div>
+        <div class="proof-bar__item">
           <div class="proof-bar__number">47</div>
           <div class="proof-bar__label">全都道府県対応</div>
-        </div>
-        <div class="proof-bar__item">
-          <div class="proof-bar__number">83+</div>
-          <div class="proof-bar__label">1エリアの検出案件数</div>
-        </div>
-        <div class="proof-bar__item">
-          <div class="proof-bar__number">85%</div>
-          <div class="proof-bar__label">最高マッチスコア</div>
         </div>
         <div class="proof-bar__item">
           <div class="proof-bar__number">毎朝 8:00</div>
@@ -524,6 +524,12 @@
             <option value="環境・エネルギー">環境・エネルギー</option>
             <option value="その他">その他</option>
           </select>
+          <select id="sortSelect" class="input input--sm" onchange="loadOpportunities()">
+            <option value="deadline_asc">締切が近い順</option>
+            <option value="scraped_desc" selected>新着順</option>
+            <option value="deadline_desc">締切が遠い順</option>
+            <option value="scraped_asc">登録が古い順</option>
+          </select>
           <span id="oppCount" class="filter-bar__count"></span>
         </div>
         <div id="opportunityList" class="opportunity-list">
@@ -615,7 +621,7 @@
   <!-- Footer -->
   <footer class="footer">
     <div class="footer__inner">
-      <p>公募ナビAI v3.1 &mdash; &copy; 2026 <a href="https://bantex.jp" target="_blank">bantex</a></p>
+      <p>公募ナビAI v3.2 &mdash; &copy; 2026 <a href="https://bantex.jp" target="_blank">bantex</a></p>
       <div class="footer__links">
         <a href="https://bantex.jp/terms.html" target="_blank">利用規約</a>
         <a href="https://bantex.jp/privacy.html" target="_blank">プライバシーポリシー</a>

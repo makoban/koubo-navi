@@ -1,5 +1,5 @@
-// 公募ナビAI v3.1
-// 業種カテゴリマッチング + AI詳細分析キャッシュ方式
+// 公募ナビAI v3.2
+// フィルター強化 + ソート + 動的stats + ティア再設計
 
 // ---------------------------------------------------------------------------
 // Config
@@ -48,7 +48,21 @@ let userOnboarded = false;
 document.addEventListener("DOMContentLoaded", () => {
   initSupabase();
   checkUrlParams();
+  loadLandingStats();
 });
+
+async function loadLandingStats() {
+  try {
+    const res = await fetch(`${WORKER_BASE}/api/stats`);
+    const data = await res.json();
+    const el1 = document.getElementById("statRecentWeek");
+    const el2 = document.getElementById("statTotalActive");
+    if (el1 && data.recent_week != null) el1.textContent = data.recent_week.toLocaleString() + "件";
+    if (el2 && data.total_active != null) el2.textContent = data.total_active.toLocaleString() + "件";
+  } catch (e) {
+    console.warn("stats取得失敗:", e);
+  }
+}
 
 function initSupabase() {
   if (typeof supabase === "undefined") {
@@ -672,15 +686,18 @@ async function loadDashboard() {
 }
 
 let currentTier = "free";
+let currentIsPaid = false;
 let totalUnfiltered = 0;
 let userIndustries = [];
 
 async function loadOpportunities() {
   const token = await getAccessToken();
   const industryFilter = document.getElementById("filterIndustry")?.value || "";
+  const sortValue = document.getElementById("sortSelect")?.value || "scraped_desc";
 
-  const params = new URLSearchParams({ limit: "200" });
+  const params = new URLSearchParams({ limit: "500" });
   if (industryFilter) params.set("industry", industryFilter);
+  if (sortValue) params.set("sort", sortValue);
 
   try {
     const resp = await fetch(`${WORKER_BASE}/api/user/opportunities?${params}`, {
@@ -688,6 +705,7 @@ async function loadOpportunities() {
     });
     const data = await resp.json();
     currentTier = data.tier || "free";
+    currentIsPaid = data.is_paid || false;
     totalUnfiltered = data.total_unfiltered || 0;
     userIndustries = data.user_industries || [];
     renderOpportunities(data.opportunities || []);
@@ -699,7 +717,6 @@ async function loadOpportunities() {
 function renderOpportunities(items) {
   const list = document.getElementById("opportunityList");
   const countEl = document.getElementById("oppCount");
-  const visibleCount = (currentTier === "paid" || currentTier === "trial") ? items.length : Math.min(5, items.length);
   countEl.textContent = `${items.length}件`;
 
   if (items.length === 0) {
@@ -712,10 +729,9 @@ function renderOpportunities(items) {
     return;
   }
 
-  let html = items.map((item, idx) => {
+  let html = items.map((item) => {
     const opp = item.opportunities || {};
     const oppId = item.opportunity_id || opp.id || "";
-    const isBlurred = (currentTier !== "paid" && currentTier !== "trial") && idx >= visibleCount;
 
     const areaName = AREA_NAMES[opp.area_id] || opp.area_id || "";
     const deadlineStr = opp.deadline || "";
@@ -740,36 +756,45 @@ function renderOpportunities(items) {
     if (contractStr) dateParts.push(`<span class="opp-card__date">履行: ${escapeHtml(contractStr)}</span>`);
     if (!dateParts.length) dateParts.push(`<span class="opp-card__date">取得: ${escapeHtml(scrapedAt)}</span>`);
 
-    return `
-      <div class="opp-card ${isBlurred ? 'opp-card--blurred' : ''}" id="opp-${escapeHtml(oppId)}">
-        ${isBlurred ? '<div class="opp-card__blur-overlay" onclick="switchTab(\'subscription\')"><span>有料プランで表示</span></div>' : ''}
+    // 基本情報（全ユーザー共通）
+    let cardHtml = `
+      <div class="opp-card" id="opp-${escapeHtml(oppId)}">
         <div class="opp-card__body">
           <div class="opp-card__title">${escapeHtml(opp.title || item.title || "不明")}</div>
           <div class="opp-card__meta">
             ${areaName ? `${escapeHtml(areaName)} ` : ""}${escapeHtml(opp.organization || "")}
             ${opp.method ? ` / ${escapeHtml(opp.method)}` : ""}
-            ${budgetStr ? ` / ${escapeHtml(budgetStr)}` : ""}
           </div>
           <div class="opp-card__dates">${dateParts.join("")}</div>
-          ${industryCategory ? `<span class="opp-card__industry">${escapeHtml(industryCategory)}</span>` : ""}
-          ${summaryText ? `<div class="opp-card__summary">${escapeHtml(summaryText)}</div>` : ""}
-          ${contactStr ? `<div class="opp-card__contact">${escapeHtml(contactStr)}</div>` : ""}
-          ${!isBlurred ? `<div class="opp-card__actions">
+          ${industryCategory ? `<span class="opp-card__industry">${escapeHtml(industryCategory)}</span>` : ""}`;
+
+    if (currentIsPaid) {
+      // 有料ユーザー: 詳細情報 + アクション
+      if (budgetStr) cardHtml += `<div class="opp-card__meta">予算: ${escapeHtml(budgetStr)}</div>`;
+      if (summaryText) cardHtml += `<div class="opp-card__summary">${escapeHtml(summaryText)}</div>`;
+      if (contactStr) cardHtml += `<div class="opp-card__contact">${escapeHtml(contactStr)}</div>`;
+      cardHtml += `<div class="opp-card__actions">
             ${detailUrl ? `<a href="${escapeHtml(detailUrl)}" target="_blank" class="btn btn--outline btn--sm">詳細を見る</a>` : ""}
             <button class="btn btn--primary btn--sm" onclick="analyzeOpportunity('${escapeHtml(oppId)}')">AI詳細分析</button>
           </div>
-          <div class="opp-card__analysis hidden" id="analysis-${escapeHtml(oppId)}"></div>` : ""}
-        </div>
-      </div>
-    `;
+          <div class="opp-card__analysis hidden" id="analysis-${escapeHtml(oppId)}"></div>`;
+    } else {
+      // 無料ユーザー: ロック表示
+      cardHtml += `<div class="card__locked">
+            <p>予算・要件・連絡先・AI分析は有料プランで閲覧できます</p>
+            <button class="btn btn--primary btn--sm" onclick="switchTab('subscription')">プランを見る</button>
+          </div>`;
+    }
+
+    cardHtml += `</div></div>`;
+    return cardHtml;
   }).join("");
 
-  // Upgrade CTA for free tier only (trial = paid)
-  if (currentTier === "free" && items.length > visibleCount) {
+  // Upgrade CTA for free tier
+  if (!currentIsPaid) {
     html += `
       <div class="upgrade-cta">
-        <p><strong>${items.length - visibleCount}件</strong>の案件がぼかし表示されています</p>
-        <p>有料プランにアップグレードすると全件確認できます</p>
+        <p>詳細情報・AI分析は有料プランで利用できます</p>
         <button class="btn btn--primary" onclick="switchTab('subscription')">プランをアップグレード</button>
       </div>
     `;
