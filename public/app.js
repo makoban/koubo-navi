@@ -1,4 +1,4 @@
-// 公募ナビAI v3.0
+// 公募ナビAI v3.1
 // 業種カテゴリマッチング + AI詳細分析キャッシュ方式
 
 // ---------------------------------------------------------------------------
@@ -333,14 +333,14 @@ async function analyzeCompany() {
         "AIがウェブサイトにアクセスしています...",
         "ページ内容を読み取っています...",
         "事業内容を解析しています...",
-        "マッチングキーワードを生成しています...",
+        "業種カテゴリを判定しています...",
         "プロフィールを作成しています...",
         "もう少しお待ちください...",
       ]
     : [
         "AIが事業内容を分析しています...",
         "事業分野を特定しています...",
-        "マッチングキーワードを生成しています...",
+        "業種カテゴリを判定しています...",
         "プロフィールを作成しています...",
         "もう少しお待ちください...",
       ];
@@ -652,8 +652,6 @@ async function loadDashboard() {
     if (companyProfile) {
       document.getElementById("dashBusiness").textContent =
         (companyProfile.business_areas || []).join("、") || "-";
-      document.getElementById("dashKeywords").textContent =
-        (companyProfile.matching_keywords || []).join("、") || "-";
       const indEl = document.getElementById("dashIndustries");
       if (indEl) {
         indEl.textContent = (companyProfile.industry_categories || []).join("、") || "未設定";
@@ -701,7 +699,7 @@ async function loadOpportunities() {
 function renderOpportunities(items) {
   const list = document.getElementById("opportunityList");
   const countEl = document.getElementById("oppCount");
-  const visibleCount = currentTier === "paid" ? items.length : currentTier === "trial" ? Math.min(10, items.length) : Math.min(5, items.length);
+  const visibleCount = (currentTier === "paid" || currentTier === "trial") ? items.length : Math.min(5, items.length);
   countEl.textContent = `${items.length}件`;
 
   if (items.length === 0) {
@@ -717,7 +715,7 @@ function renderOpportunities(items) {
   let html = items.map((item, idx) => {
     const opp = item.opportunities || {};
     const oppId = item.opportunity_id || opp.id || "";
-    const isBlurred = (currentTier !== "paid") && idx >= visibleCount;
+    const isBlurred = (currentTier !== "paid" && currentTier !== "trial") && idx >= visibleCount;
 
     const areaName = AREA_NAMES[opp.area_id] || opp.area_id || "";
     const deadlineStr = opp.deadline || "";
@@ -759,8 +757,8 @@ function renderOpportunities(items) {
     `;
   }).join("");
 
-  // Upgrade CTA for free/trial tier
-  if (currentTier !== "paid" && items.length > visibleCount) {
+  // Upgrade CTA for free tier only (trial = paid)
+  if (currentTier === "free" && items.length > visibleCount) {
     html += `
       <div class="upgrade-cta">
         <p><strong>${items.length - visibleCount}件</strong>の案件がぼかし表示されています</p>
@@ -879,65 +877,10 @@ function loadSettings(profileData) {
   // Notification settings
   const user = profileData.user || {};
   document.getElementById("settingEmailNotify").checked = user.email_notify !== false;
-  document.getElementById("settingThreshold").value = user.notification_threshold || 0;
-  document.getElementById("thresholdValue").textContent = `${user.notification_threshold || 0}%`;
-
-  // Keywords
-  renderKeywordEditor();
-
   // Area editor
   renderSettingsAreas(profileData);
 }
 
-function renderKeywordEditor() {
-  if (!companyProfile) return;
-  const container = document.getElementById("keywordEditor");
-  const keywords = companyProfile.matching_keywords || [];
-  container.innerHTML = `
-    <div class="keyword-tags">
-      ${keywords.map((kw, i) => `
-        <span class="keyword-tag">
-          ${escapeHtml(kw)}
-          <button class="keyword-tag__remove" onclick="removeKeyword(${i})">×</button>
-        </span>
-      `).join("")}
-    </div>
-    <div style="margin-top:12px;display:flex;gap:8px;">
-      <input type="text" id="newKeywordInput" class="input input--sm" placeholder="キーワードを追加">
-      <button class="btn btn--outline btn--sm" onclick="addKeyword()">追加</button>
-    </div>
-  `;
-}
-
-async function removeKeyword(index) {
-  if (!companyProfile) return;
-  const keywords = [...(companyProfile.matching_keywords || [])];
-  keywords.splice(index, 1);
-  companyProfile.matching_keywords = keywords;
-  renderKeywordEditor();
-  await saveKeywords(keywords);
-}
-
-async function addKeyword() {
-  const input = document.getElementById("newKeywordInput");
-  const kw = input.value.trim();
-  if (!kw) return;
-
-  if (!companyProfile.matching_keywords) companyProfile.matching_keywords = [];
-  companyProfile.matching_keywords.push(kw);
-  input.value = "";
-  renderKeywordEditor();
-  await saveKeywords(companyProfile.matching_keywords);
-}
-
-async function saveKeywords(keywords) {
-  const token = await getAccessToken();
-  await fetch(`${WORKER_BASE}/api/user/profile`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ matching_keywords: keywords }),
-  });
-}
 
 // ---------------------------------------------------------------------------
 // Settings: Area Editor
@@ -1091,15 +1034,11 @@ async function saveSettingsAreas() {
 
 async function saveSettings() {
   const token = await getAccessToken();
-  const threshold = parseInt(document.getElementById("settingThreshold").value);
-  document.getElementById("thresholdValue").textContent = `${threshold}%`;
-
   await fetch(`${WORKER_BASE}/api/user/profile`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({
       email_notify: document.getElementById("settingEmailNotify").checked,
-      notification_threshold: threshold,
     }),
   });
 }

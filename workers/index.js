@@ -405,7 +405,7 @@ async function handleGetOpportunities(request, env) {
   const isActive = user.status === "active";
   const isTrial = user.status === "trial" && trialEnd && trialEnd > now;
   const tier = isActive ? "paid" : isTrial ? "trial" : "free";
-  const tierMaxResults = isActive ? 100 : 35;
+  const tierMaxResults = (isActive || isTrial) ? 100 : 35;
 
   const url = new URL(request.url);
   const requestedLimit = parseInt(url.searchParams.get("limit") || "200");
