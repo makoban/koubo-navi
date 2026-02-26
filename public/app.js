@@ -719,9 +719,16 @@ function renderOpportunities(items) {
 
     const areaName = AREA_NAMES[opp.area_id] || opp.area_id || "";
     const deadlineStr = opp.deadline || "";
+    const publishedStr = opp.published_date || "";
     const scrapedAt = opp.scraped_at ? opp.scraped_at.split("T")[0] : "";
     const summaryText = opp.detailed_summary || opp.summary || "";
     const industryCategory = opp.industry_category || "";
+
+    // 壊れたURL（検索トップページ・一覧ページ）を除外
+    const detailUrl = opp.detail_url || "";
+    const isBadUrl = !detailUrl
+      || detailUrl.includes("/pps-web-biz/UAA01/OAA0101")
+      || detailUrl.endsWith("/all.html");
 
     return `
       <div class="opp-card ${isBlurred ? 'opp-card--blurred' : ''}" id="opp-${escapeHtml(oppId)}">
@@ -733,13 +740,14 @@ function renderOpportunities(items) {
             ${opp.method ? ` / ${escapeHtml(opp.method)}` : ""}
           </div>
           <div class="opp-card__dates">
-            ${scrapedAt ? `<span class="opp-card__date">登録: ${escapeHtml(scrapedAt)}</span>` : ""}
+            ${publishedStr ? `<span class="opp-card__date">公開: ${escapeHtml(publishedStr)}</span>` : ""}
+            ${scrapedAt ? `<span class="opp-card__date">取得: ${escapeHtml(scrapedAt)}</span>` : ""}
             ${deadlineStr ? `<span class="opp-card__deadline">締切: ${escapeHtml(deadlineStr)}</span>` : ""}
           </div>
           ${industryCategory ? `<span class="opp-card__industry">${escapeHtml(industryCategory)}</span>` : ""}
           ${summaryText ? `<div class="opp-card__summary">${escapeHtml(summaryText)}</div>` : ""}
           ${!isBlurred ? `<div class="opp-card__actions">
-            ${opp.detail_url ? `<a href="${escapeHtml(opp.detail_url)}" target="_blank" class="btn btn--outline btn--sm">詳細を見る</a>` : ""}
+            ${!isBadUrl ? `<a href="${escapeHtml(detailUrl)}" target="_blank" class="btn btn--outline btn--sm">詳細を見る</a>` : ""}
             <button class="btn btn--primary btn--sm" onclick="analyzeOpportunity('${escapeHtml(oppId)}')">AI詳細分析</button>
           </div>
           <div class="opp-card__analysis hidden" id="analysis-${escapeHtml(oppId)}"></div>` : ""}
