@@ -86,12 +86,16 @@ def _parse_kkj_xml(xml_bytes: bytes) -> list[dict]:
         category_raw = _xml_text(sr, "Category") or ""
         method_raw = _xml_text(sr, "ProcedureType") or ""
 
-        # detail_url: ExternalDocumentURI を優先（KKJ /d/ URLは404になるため）
+        # detail_url: ExternalDocumentURI を優先するが、
+        # p-portal検索ページ等の汎用URLはフォールバック
         detail_url = _xml_text(sr, "ExternalDocumentURI")
-        if not detail_url:
-            key = _xml_text(sr, "Key")
-            if key:
-                detail_url = f"https://www.kkj.go.jp/d/?A={key}&L=ja"
+        key = _xml_text(sr, "Key")
+        kkj_url = f"https://www.kkj.go.jp/d/?A={key}&L=ja" if key else None
+
+        # 無効なURL判定: 検索トップページ・一覧ページは個別案件に辿れない
+        bad_patterns = ("/pps-web-biz/UAA01/OAA0101", "/all.html")
+        if not detail_url or any(p in detail_url for p in bad_patterns):
+            detail_url = kkj_url or detail_url
 
         # summary: ProjectDescription から余分なメタデータを除去
         summary_raw = _xml_text(sr, "ProjectDescription") or ""
