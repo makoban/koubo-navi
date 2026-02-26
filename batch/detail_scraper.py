@@ -1,7 +1,9 @@
 """公募ナビAI - 詳細ページスクレイパー
 
 各案件のdetail_urlを巡回し、Geminiで構造化データを抽出する。
-抽出項目: published_date, deadline, budget, requirements, detailed_summary, difficulty, industry_category
+抽出項目: published_date, deadline, bid_opening_date, contract_period,
+  briefing_date, budget, requirements, contact_info, detailed_summary,
+  difficulty, industry_category
 """
 
 import logging
@@ -103,8 +105,12 @@ def _extract_details(text: str, opp: dict) -> dict | None:
 {{
   "published_date": "公告日・掲載日（YYYY-MM-DD形式）",
   "deadline": "提出期限・入札期限・締切日（YYYY-MM-DD形式）",
+  "bid_opening_date": "入札日・開札日（YYYY-MM-DD形式）",
+  "contract_period": "契約期間・履行期間（例: 2026-04-01〜2027-03-31。開始日と終了日をYYYY-MM-DD〜YYYY-MM-DD形式で）",
+  "briefing_date": "入札説明会・現場説明会の日時（例: 2026-03-10 14:00）",
   "budget": "予算・契約金額（例: 1,000万円、500,000円。不明ならnull）",
   "requirements": "参加資格・応募条件（50文字以内で要約）",
+  "contact_info": "問い合わせ先の部署名・電話番号・メールアドレス（50文字以内で要約）",
   "detailed_summary": "この案件の具体的な業務内容を200文字以内で要約",
   "difficulty": "この案件の参入難易度を判定（高/中/低）。判定基準: 高=特殊資格・大規模実績必須、中=一般的な資格・実績で可、低=資格不要・小規模",
   "industry_category": "以下の10カテゴリから最も適切なものを1つ選択: IT・DX / 建設・土木 / コンサル・調査 / 広告・クリエイティブ / 設備・物品 / 清掃・管理 / 医療・福祉 / 教育・研修 / 環境・エネルギー / その他"
@@ -120,8 +126,8 @@ def _extract_details(text: str, opp: dict) -> dict | None:
         if not isinstance(result, dict):
             return None
 
-        # バリデーション: 日付形式チェック
-        for date_key in ("published_date", "deadline"):
+        # バリデーション: 日付形式チェック（YYYY-MM-DD）
+        for date_key in ("published_date", "deadline", "bid_opening_date"):
             val = result.get(date_key)
             if val and (len(str(val)) != 10 or str(val).count("-") != 2):
                 result[date_key] = None
@@ -139,9 +145,15 @@ def _extract_details(text: str, opp: dict) -> dict | None:
         if result.get("industry_category") not in valid_categories:
             result["industry_category"] = "その他"
 
-        # detailed_summary の長さ制限
+        # テキストフィールドの長さ制限
         if result.get("detailed_summary") and len(result["detailed_summary"]) > 300:
             result["detailed_summary"] = result["detailed_summary"][:297] + "..."
+        if result.get("contact_info") and len(result["contact_info"]) > 100:
+            result["contact_info"] = result["contact_info"][:97] + "..."
+        if result.get("contract_period") and len(result["contract_period"]) > 50:
+            result["contract_period"] = result["contract_period"][:47] + "..."
+        if result.get("briefing_date") and len(result["briefing_date"]) > 50:
+            result["briefing_date"] = result["briefing_date"][:47] + "..."
 
         return result
 

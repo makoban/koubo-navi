@@ -1144,9 +1144,12 @@ body {
 .opp-card:hover { border-color: var(--border-gold); }
 
 /* Dates row */
-.opp-card__dates { display: flex; gap: 16px; margin-bottom: 6px; font-size: 12px; }
+.opp-card__dates { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 6px; font-size: 12px; }
 .opp-card__date { color: var(--text-muted); }
 .opp-card__deadline { color: var(--warning); font-weight: 500; }
+
+/* Contact info */
+.opp-card__contact { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 
 /* Industry badge */
 .opp-card__industry {

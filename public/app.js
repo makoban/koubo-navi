@@ -720,11 +720,25 @@ function renderOpportunities(items) {
     const areaName = AREA_NAMES[opp.area_id] || opp.area_id || "";
     const deadlineStr = opp.deadline || "";
     const publishedStr = opp.published_date || "";
+    const bidDateStr = opp.bid_opening_date || "";
+    const contractStr = opp.contract_period || "";
+    const briefingStr = opp.briefing_date || "";
     const scrapedAt = opp.scraped_at ? opp.scraped_at.split("T")[0] : "";
     const summaryText = opp.detailed_summary || opp.summary || "";
     const industryCategory = opp.industry_category || "";
+    const budgetStr = opp.budget || "";
+    const contactStr = opp.contact_info || "";
 
     const detailUrl = opp.detail_url || "";
+
+    // 日付行: あるものだけ表示
+    const dateParts = [];
+    if (publishedStr) dateParts.push(`<span class="opp-card__date">公開: ${escapeHtml(publishedStr)}</span>`);
+    if (deadlineStr) dateParts.push(`<span class="opp-card__deadline">締切: ${escapeHtml(deadlineStr)}</span>`);
+    if (bidDateStr) dateParts.push(`<span class="opp-card__date">開札: ${escapeHtml(bidDateStr)}</span>`);
+    if (briefingStr) dateParts.push(`<span class="opp-card__date">説明会: ${escapeHtml(briefingStr)}</span>`);
+    if (contractStr) dateParts.push(`<span class="opp-card__date">履行: ${escapeHtml(contractStr)}</span>`);
+    if (!dateParts.length) dateParts.push(`<span class="opp-card__date">取得: ${escapeHtml(scrapedAt)}</span>`);
 
     return `
       <div class="opp-card ${isBlurred ? 'opp-card--blurred' : ''}" id="opp-${escapeHtml(oppId)}">
@@ -734,14 +748,12 @@ function renderOpportunities(items) {
           <div class="opp-card__meta">
             ${areaName ? `${escapeHtml(areaName)} ` : ""}${escapeHtml(opp.organization || "")}
             ${opp.method ? ` / ${escapeHtml(opp.method)}` : ""}
+            ${budgetStr ? ` / ${escapeHtml(budgetStr)}` : ""}
           </div>
-          <div class="opp-card__dates">
-            ${publishedStr ? `<span class="opp-card__date">公開: ${escapeHtml(publishedStr)}</span>` : ""}
-            ${scrapedAt ? `<span class="opp-card__date">取得: ${escapeHtml(scrapedAt)}</span>` : ""}
-            ${deadlineStr ? `<span class="opp-card__deadline">締切: ${escapeHtml(deadlineStr)}</span>` : ""}
-          </div>
+          <div class="opp-card__dates">${dateParts.join("")}</div>
           ${industryCategory ? `<span class="opp-card__industry">${escapeHtml(industryCategory)}</span>` : ""}
           ${summaryText ? `<div class="opp-card__summary">${escapeHtml(summaryText)}</div>` : ""}
+          ${contactStr ? `<div class="opp-card__contact">${escapeHtml(contactStr)}</div>` : ""}
           ${!isBlurred ? `<div class="opp-card__actions">
             ${detailUrl ? `<a href="${escapeHtml(detailUrl)}" target="_blank" class="btn btn--outline btn--sm">詳細を見る</a>` : ""}
             <button class="btn btn--primary btn--sm" onclick="analyzeOpportunity('${escapeHtml(oppId)}')">AI詳細分析</button>

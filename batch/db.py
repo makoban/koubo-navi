@@ -204,8 +204,10 @@ def update_opportunity_details(opp_id: str, details: dict):
 
     body = {"detail_fetched_at": datetime.now(timezone.utc).isoformat()}
 
-    for key in ("published_date", "deadline", "budget", "requirements",
-                "detailed_summary", "difficulty", "industry_category"):
+    for key in ("published_date", "deadline", "bid_opening_date",
+                "contract_period", "briefing_date", "budget",
+                "requirements", "contact_info", "detailed_summary",
+                "difficulty", "industry_category"):
         val = details.get(key)
         if val is not None:
             body[key] = val
