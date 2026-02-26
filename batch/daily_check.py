@@ -1,12 +1,9 @@
-"""公募ナビAI - 日次バッチ処理
+"""公募ナビAI - 日次バッチ処理 v3.0
 
 Render.com Cron Job から呼び出され、以下を実行:
-1. アクティブユーザーの対象エリアを集約
-2. エリアごとにデータソースをスクレイピング
-3. 案件を opportunities テーブルに保存
-4. ユーザーごとに AI マッチングを実行
-5. マッチング結果を保存
-6. メール通知を送信
+1. 全ソースをスクレイピング → opportunities 保存
+1.5. 詳細ページ取得 + 業種カテゴリ分類（Gemini）
+2. ユーザーごとに業種マッチ新着案件 → AI詳細分析 → メール通知
 """
 
 import logging
@@ -16,7 +13,6 @@ from datetime import datetime, timezone
 import db
 from detail_scraper import enrich_batch
 from gov_scraper import scrape_source
-from matcher import match_opportunities
 from notifier import notify_user
 
 logger = logging.getLogger(__name__)
@@ -28,7 +24,7 @@ def run_daily_check():
     stats = {
         "users_processed": 0,
         "opportunities_scraped": 0,
-        "matches_created": 0,
+        "details_enriched": 0,
         "notifications_sent": 0,
         "errors_count": 0,
         "error_details": [],
@@ -38,9 +34,6 @@ def run_daily_check():
         # バッチログ開始
         log_id = db.create_batch_log()
         logger.info("=== バッチ開始 (log_id=%s) ===", log_id)
-
-        # 0. 未スクリーニングユーザーのフォールバックチェック
-        _run_initial_screening_fallback()
 
         # =====================================================
         # Phase 1: 全ソースをスクレイピング（ユーザー有無に関係なく）
@@ -56,11 +49,8 @@ def run_daily_check():
                 sources_by_area[aid] = []
             sources_by_area[aid].append(src)
 
-        area_opportunities = {}  # area_id -> [opportunity records with DB id]
-
         for area_id, sources in sources_by_area.items():
             logger.info("--- エリア: %s (%d sources) ---", area_id, len(sources))
-            area_opps = []
 
             for source in sources:
                 source_id = source["id"]
@@ -70,7 +60,6 @@ def run_daily_check():
 
                     if raw_opps:
                         saved = db.upsert_opportunities(raw_opps, area_id, source_id)
-                        area_opps.extend(saved)
                         stats["opportunities_scraped"] += len(saved)
 
                 except Exception as exc:
@@ -83,12 +72,10 @@ def run_daily_check():
                         "error": str(exc),
                     })
 
-            area_opportunities[area_id] = area_opps
-
         logger.info("スクレイピング完了: 合計 %d件", stats["opportunities_scraped"])
 
         # =====================================================
-        # Phase 1.5: 詳細ページ取得（detail_url有 & 未取得の案件）
+        # Phase 1.5: 詳細取得 + 業種分類（detail_url有 & 未取得の案件）
         # =====================================================
         try:
             unenriched = db.get_unenriched_opportunities(limit=500)
@@ -116,7 +103,7 @@ def run_daily_check():
             })
 
         # =====================================================
-        # Phase 2: ユーザーが存在する場合のみマッチング・通知
+        # Phase 2: ユーザーごとに業種マッチ通知
         # =====================================================
         users = db.get_active_users()
         logger.info("アクティブユーザー: %d人", len(users))
@@ -126,62 +113,15 @@ def run_daily_check():
             _finish_log(log_id, stats, "completed")
             return stats
 
-        # ユーザーごとのエリアマップ
-        user_areas_map = {}
-        for user in users:
-            user_areas_map[user["id"]] = db.get_user_areas(user["id"])
-
-        # 4. ユーザーごとにマッチング
-        for user in users:
-            user_id = user["id"]
-            logger.info("--- マッチング: user=%s ---", user_id)
-
-            try:
-                profile = db.get_user_profile(user_id)
-                if not profile:
-                    logger.warning("プロフィール未設定: %s", user_id)
-                    continue
-
-                # ユーザーのエリアに該当する案件を集める
-                user_opps = []
-                for area_id in user_areas_map.get(user_id, []):
-                    user_opps.extend(area_opportunities.get(area_id, []))
-
-                if not user_opps:
-                    logger.info("対象案件なし: %s", user_id)
-                    stats["users_processed"] += 1
-                    continue
-
-                logger.info("マッチング対象: %d件", len(user_opps))
-
-                # AI マッチング
-                matches = match_opportunities(profile, user_opps)
-                logger.info("マッチング結果: %d件", len(matches))
-
-                # DB保存
-                if matches:
-                    db.save_user_opportunities(user_id, matches)
-                    stats["matches_created"] += len(matches)
-
-                stats["users_processed"] += 1
-
-            except Exception as exc:
-                logger.error("ユーザー %s マッチング失敗: %s", user_id, exc)
-                stats["errors_count"] += 1
-                stats["error_details"].append({
-                    "phase": "matching",
-                    "user_id": user_id,
-                    "error": str(exc),
-                })
-
-        # 5. メール通知
         logger.info("=== 通知フェーズ ===")
         for user in users:
             if not user.get("email_notify", True):
+                stats["users_processed"] += 1
                 continue
             try:
                 notified_count = notify_user(user)
                 stats["notifications_sent"] += notified_count
+                stats["users_processed"] += 1
             except Exception as exc:
                 logger.error("通知失敗 user=%s: %s", user["id"], exc)
                 stats["errors_count"] += 1
@@ -190,16 +130,17 @@ def run_daily_check():
                     "user_id": user["id"],
                     "error": str(exc),
                 })
+                stats["users_processed"] += 1
 
         # 完了
         status = "completed" if stats["errors_count"] == 0 else "completed_with_errors"
         _finish_log(log_id, stats, status)
 
         logger.info(
-            "=== バッチ完了 === users=%d, opps=%d, matches=%d, notified=%d, errors=%d",
+            "=== バッチ完了 === users=%d, opps=%d, enriched=%d, notified=%d, errors=%d",
             stats["users_processed"],
             stats["opportunities_scraped"],
-            stats["matches_created"],
+            stats["details_enriched"],
             stats["notifications_sent"],
             stats["errors_count"],
         )
@@ -218,53 +159,6 @@ def run_daily_check():
     return stats
 
 
-def _run_initial_screening_fallback():
-    """Worker のタイムアウト等で初期スクリーニングが完了しなかったユーザーを補完する。"""
-    try:
-        unscreened = db.get_unscreened_users()
-        if not unscreened:
-            return
-
-        logger.info("=== 未スクリーニングユーザー: %d人 ===", len(unscreened))
-
-        for user in unscreened:
-            user_id = user["id"]
-            try:
-                profile = db.get_user_profile(user_id)
-                if not profile:
-                    logger.warning("プロフィール未設定(スクリーニング): %s", user_id)
-                    continue
-
-                areas = db.get_user_areas(user_id)
-                if not areas:
-                    logger.warning("エリア未設定(スクリーニング): %s", user_id)
-                    db.mark_screening_done(user_id)
-                    continue
-
-                # 過去30日分の案件を集める
-                opps = db.get_opportunities_by_areas(areas, days=30, limit=300)
-
-                if not opps:
-                    logger.info("対象案件なし(スクリーニング): %s", user_id)
-                    db.mark_screening_done(user_id)
-                    continue
-
-                logger.info("スクリーニング対象: %d件 (user=%s)", len(opps), user_id)
-
-                matches = match_opportunities(profile, opps)
-                if matches:
-                    db.save_user_opportunities(user_id, matches)
-                    logger.info("スクリーニング結果: %d件マッチ (user=%s)", len(matches), user_id)
-
-                db.mark_screening_done(user_id)
-
-            except Exception as exc:
-                logger.error("スクリーニング失敗 user=%s: %s", user_id, exc)
-
-    except Exception as exc:
-        logger.error("未スクリーニングチェック失敗: %s", exc)
-
-
 def _finish_log(log_id: str, stats: dict, status: str):
     """バッチログを完了状態に更新する。"""
     if not log_id:
@@ -276,7 +170,6 @@ def _finish_log(log_id: str, stats: dict, status: str):
             status=status,
             users_processed=stats["users_processed"],
             opportunities_scraped=stats["opportunities_scraped"],
-            matches_created=stats["matches_created"],
             notifications_sent=stats["notifications_sent"],
             errors_count=stats["errors_count"],
             error_details=stats["error_details"] if stats["error_details"] else None,

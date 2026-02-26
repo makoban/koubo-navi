@@ -205,7 +205,7 @@ def update_opportunity_details(opp_id: str, details: dict):
     body = {"detail_fetched_at": datetime.now(timezone.utc).isoformat()}
 
     for key in ("published_date", "deadline", "budget", "requirements",
-                "detailed_summary", "difficulty"):
+                "detailed_summary", "difficulty", "industry_category"):
         val = details.get(key)
         if val is not None:
             body[key] = val
@@ -216,6 +216,101 @@ def update_opportunity_details(opp_id: str, details: dict):
         json=body,
         timeout=10,
     )
+
+
+# --- Industry Category ---
+
+def update_industry_category(opp_id: str, category: str):
+    """案件の業種カテゴリを更新する。"""
+    requests.patch(
+        _url(f"/opportunities?id=eq.{opp_id}"),
+        headers=_headers("return=minimal"),
+        json={"industry_category": category},
+        timeout=10,
+    )
+
+
+def get_new_opportunities_by_industry(
+    industry_categories: list[str],
+    since_hours: int = 24,
+) -> list[dict]:
+    """業種カテゴリにマッチする新着案件を取得する。"""
+    from datetime import timedelta
+
+    since = (datetime.now(timezone.utc) - timedelta(hours=since_hours)).isoformat()
+    cat_filter = ",".join(industry_categories)
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    resp = requests.get(
+        _url(
+            f"/opportunities?industry_category=in.({cat_filter})"
+            f"&scraped_at=gte.{since}"
+            f"&or=(deadline.is.null,deadline.gte.{today})"
+            "&select=*&order=scraped_at.desc&limit=100"
+        ),
+        headers=_headers(),
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def get_user_industry_categories(user_id: str) -> list[str]:
+    """ユーザーの業種カテゴリ配列を取得する。"""
+    resp = requests.get(
+        _url(f"/company_profiles?user_id=eq.{user_id}&select=industry_categories"),
+        headers=_headers(),
+        timeout=10,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    if data and data[0].get("industry_categories"):
+        return data[0]["industry_categories"]
+    return []
+
+
+def save_detailed_analysis(user_id: str, opp_id: str, analysis: dict):
+    """AI詳細分析をDBに保存する（user_opportunities upsert）。"""
+    now = datetime.now(timezone.utc).isoformat()
+    record = {
+        "user_id": user_id,
+        "opportunity_id": opp_id,
+        "detailed_analysis": json.dumps(analysis, ensure_ascii=False),
+        "analysis_completed_at": now,
+    }
+    try:
+        requests.post(
+            _url("/user_opportunities"),
+            headers={
+                **_headers("return=minimal"),
+                "Prefer": "resolution=merge-duplicates,return=minimal",
+            },
+            json=record,
+            timeout=15,
+        )
+    except Exception as e:
+        logger.debug("save analysis skip: %s", e)
+
+
+def get_cached_analysis(user_id: str, opp_id: str) -> Optional[dict]:
+    """キャッシュ済みのAI詳細分析を取得する。"""
+    resp = requests.get(
+        _url(
+            f"/user_opportunities?user_id=eq.{user_id}"
+            f"&opportunity_id=eq.{opp_id}"
+            "&select=detailed_analysis"
+        ),
+        headers=_headers(),
+        timeout=10,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    if data and data[0].get("detailed_analysis"):
+        analysis = data[0]["detailed_analysis"]
+        if isinstance(analysis, str):
+            return json.loads(analysis)
+        return analysis
+    return None
 
 
 # --- User Opportunities (Match Results) ---

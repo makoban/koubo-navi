@@ -18,7 +18,7 @@
       <div class="header__logo">
         <span class="header__icon">&#x1f4cb;</span>
         <span class="header__title">公募ナビAI</span>
-        <div class="header__badge">v2.8</div>
+        <div class="header__badge">v3.0</div>
       </div>
       <div class="header__actions" id="authArea">
         <button class="btn btn--outline btn--sm" id="loginBtn" onclick="showLoginModal()">ログイン</button>
@@ -534,11 +534,18 @@
       <!-- Opportunities Tab -->
       <div class="tab-panel active" id="tab-opportunities">
         <div class="filter-bar">
-          <select id="filterScore" class="input input--sm" onchange="loadOpportunities()">
-            <option value="0" selected>全スコア（関連度順）</option>
-            <option value="40">40%以上</option>
-            <option value="60">60%以上</option>
-            <option value="80">80%以上</option>
+          <select id="filterIndustry" class="input input--sm" onchange="loadOpportunities()">
+            <option value="" selected>全業種（マッチ業種）</option>
+            <option value="IT・DX">IT・DX</option>
+            <option value="建設・土木">建設・土木</option>
+            <option value="コンサル・調査">コンサル・調査</option>
+            <option value="広告・クリエイティブ">広告・クリエイティブ</option>
+            <option value="設備・物品">設備・物品</option>
+            <option value="清掃・管理">清掃・管理</option>
+            <option value="医療・福祉">医療・福祉</option>
+            <option value="教育・研修">教育・研修</option>
+            <option value="環境・エネルギー">環境・エネルギー</option>
+            <option value="その他">その他</option>
           </select>
           <span id="oppCount" class="filter-bar__count"></span>
         </div>
@@ -581,11 +588,10 @@
             <span>メール通知</span>
             <input type="checkbox" id="settingEmailNotify" checked onchange="saveSettings()">
           </label>
-          <label class="setting-row">
-            <span>スコア閾値</span>
-            <input type="range" id="settingThreshold" min="0" max="100" value="0" onchange="saveSettings()">
-            <span id="thresholdValue">0%</span>
-          </label>
+          <div class="setting-row">
+            <span>業種カテゴリ</span>
+            <span id="dashIndustries" style="color:var(--accent);font-size:13px;">-</span>
+          </div>
         </div>
         <div class="settings-section">
           <h3>マッチングキーワード</h3>
@@ -638,7 +644,7 @@
   <!-- Footer -->
   <footer class="footer">
     <div class="footer__inner">
-      <p>公募ナビAI v2.8 &mdash; &copy; 2026 <a href="https://bantex.jp" target="_blank">bantex</a></p>
+      <p>公募ナビAI v3.0 &mdash; &copy; 2026 <a href="https://bantex.jp" target="_blank">bantex</a></p>
       <div class="footer__links">
         <a href="https://bantex.jp/terms.html" target="_blank">利用規約</a>
         <a href="https://bantex.jp/privacy.html" target="_blank">プライバシーポリシー</a>

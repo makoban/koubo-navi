@@ -1,5 +1,5 @@
-// 公募ナビAI v2.8
-// 詳細ページ取得: 公告日・締切日・予算・難易度・詳細要約をGeminiで抽出
+// 公募ナビAI v3.0
+// 業種カテゴリマッチング + AI詳細分析キャッシュ方式
 
 // ---------------------------------------------------------------------------
 // Config
@@ -601,69 +601,8 @@ async function startTrialCheckout() {
 }
 
 async function verifyCheckout(sessionId) {
-  // After returning from Stripe, show dashboard and trigger initial screening
   showPage("dashboard");
-  try {
-    const token = await getAccessToken();
-    if (token) triggerInitialScreening(token);
-  } catch {
-    // スクリーニングに失敗してもダッシュボードは表示
-  }
-}
-
-async function triggerInitialScreening(token) {
-  try {
-    const screenResp = await fetch(`${WORKER_BASE}/api/user/screen`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    const screenData = await screenResp.json();
-
-    if (screenData.status === "already_done") {
-      loadOpportunities();
-      return;
-    }
-
-    if (screenData.status === "screening_started") {
-      // スクリーニング進捗を表示
-      const list = document.getElementById("opportunityList");
-      list.innerHTML = `
-        <div class="empty-state" id="screeningProgress">
-          <p style="font-size:24px;">&#x1F50D;</p>
-          <p style="color:var(--accent);font-weight:600;">AIが過去30日分の案件をスクリーニング中...</p>
-          <p>しばらくお待ちください。案件が見つかり次第表示されます。</p>
-        </div>
-      `;
-
-      // 5秒間隔でポーリング（最大12回 = 60秒）
-      let attempts = 0;
-      const poll = setInterval(async () => {
-        attempts++;
-        try {
-          const resp = await fetch(`${WORKER_BASE}/api/user/opportunities?limit=1`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await resp.json();
-          if ((data.opportunities || []).length > 0 || attempts >= 12) {
-            clearInterval(poll);
-            loadOpportunities();
-          }
-        } catch {
-          if (attempts >= 12) {
-            clearInterval(poll);
-            loadOpportunities();
-          }
-        }
-      }, 5000);
-    } else {
-      loadOpportunities();
-    }
-  } catch {
-    loadOpportunities();
-  }
+  loadOpportunities();
 }
 
 // ---------------------------------------------------------------------------
@@ -715,14 +654,14 @@ async function loadDashboard() {
         (companyProfile.business_areas || []).join("、") || "-";
       document.getElementById("dashKeywords").textContent =
         (companyProfile.matching_keywords || []).join("、") || "-";
+      const indEl = document.getElementById("dashIndustries");
+      if (indEl) {
+        indEl.textContent = (companyProfile.industry_categories || []).join("、") || "未設定";
+      }
     }
 
-    // Trigger initial screening if not done yet (ensures matches exist even without Stripe return)
-    if (profileData.user && !profileData.user.initial_screening_done) {
-      triggerInitialScreening(token);
-    } else {
-      loadOpportunities();
-    }
+    // 案件一覧を読み込み（業種マッチ方式）
+    loadOpportunities();
 
     // Load settings
     loadSettings(profileData);
@@ -736,12 +675,14 @@ async function loadDashboard() {
 
 let currentTier = "free";
 let totalUnfiltered = 0;
+let userIndustries = [];
 
 async function loadOpportunities() {
   const token = await getAccessToken();
-  const scoreMin = document.getElementById("filterScore").value;
+  const industryFilter = document.getElementById("filterIndustry")?.value || "";
 
-  const params = new URLSearchParams({ score_min: scoreMin, limit: "200" });
+  const params = new URLSearchParams({ limit: "200" });
+  if (industryFilter) params.set("industry", industryFilter);
 
   try {
     const resp = await fetch(`${WORKER_BASE}/api/user/opportunities?${params}`, {
@@ -750,6 +691,7 @@ async function loadOpportunities() {
     const data = await resp.json();
     currentTier = data.tier || "free";
     totalUnfiltered = data.total_unfiltered || 0;
+    userIndustries = data.user_industries || [];
     renderOpportunities(data.opportunities || []);
   } catch {
     renderOpportunities([]);
@@ -765,9 +707,8 @@ function renderOpportunities(items) {
   if (items.length === 0) {
     list.innerHTML = `
       <div class="empty-state">
-        <p>現在マッチする案件はまだありません。</p>
-        <p>AIが毎朝8:00に行政サイトをチェックし、新しい案件が見つかり次第こちらに表示されます。</p>
-        <p style="color:var(--text-muted);margin-top:8px;">初回スクリーニングには最大24時間かかる場合があります。</p>
+        <p>現在マッチする案件はありません。</p>
+        <p>AIが毎朝8:00に行政サイトをチェックし、貴社の業種にマッチする案件をお届けします。</p>
       </div>
     `;
     return;
@@ -775,12 +716,6 @@ function renderOpportunities(items) {
 
   let html = items.map((item, idx) => {
     const opp = item.opportunities || {};
-    const score = item.match_score;
-    const hasScore = score !== null && score !== undefined;
-    const scoreClass = !hasScore ? "unscored" : score >= 80 ? "high" : score >= 60 ? "mid" : "low";
-    const scoreLabel = hasScore ? `${score}%` : "未評価";
-    const rec = item.recommendation || "";
-    const rank = item.rank_position || (idx + 1);
     const oppId = item.opportunity_id || opp.id || "";
     const isBlurred = (currentTier !== "paid") && idx >= visibleCount;
 
@@ -790,18 +725,20 @@ function renderOpportunities(items) {
     const publishedDate = opp.published_date || "";
     const difficulty = opp.difficulty || "";
     const budget = opp.budget || "";
+    const industryCategory = opp.industry_category || "";
     const diffClass = difficulty === "\u9AD8" ? "high" : difficulty === "\u4E2D" ? "mid" : difficulty === "\u4F4E" ? "low" : "";
 
     return `
       <div class="opp-card ${isBlurred ? 'opp-card--blurred' : ''}" id="opp-${escapeHtml(oppId)}">
         ${isBlurred ? '<div class="opp-card__blur-overlay" onclick="switchTab(\'subscription\')"><span>有料プランで表示</span></div>' : ''}
-        <div class="opp-card__rank">#${rank}</div>
-        <div class="opp-card__score opp-card__score--${scoreClass}">${scoreLabel}</div>
         <div class="opp-card__body">
-          <div class="opp-card__title">${escapeHtml(opp.title || item.title || "不明")}</div>
-          <div class="opp-card__meta">
+          <div class="opp-card__badges">
+            ${industryCategory ? `<span class="opp-card__industry">${escapeHtml(industryCategory)}</span>` : ""}
             ${areaName ? `<span class="opp-card__area">${escapeHtml(areaName)}</span>` : ""}
             ${difficulty ? `<span class="opp-card__difficulty opp-card__difficulty--${diffClass}">${escapeHtml(difficulty)}</span>` : ""}
+          </div>
+          <div class="opp-card__title">${escapeHtml(opp.title || item.title || "不明")}</div>
+          <div class="opp-card__meta">
             ${escapeHtml(opp.organization || "")}
             ${opp.category ? ` / ${escapeHtml(opp.category)}` : ""}
             ${opp.method ? ` / ${escapeHtml(opp.method)}` : ""}
@@ -812,7 +749,6 @@ function renderOpportunities(items) {
             ${budget ? `<span class="opp-card__budget">${escapeHtml(budget)}</span>` : ""}
           </div>
           ${summaryText ? `<div class="opp-card__summary">${escapeHtml(summaryText)}</div>` : ""}
-          ${rec ? `<div class="opp-card__reason">${escapeHtml(rec)}</div>` : ""}
           ${!isBlurred ? `<div class="opp-card__actions">
             ${opp.detail_url ? `<a href="${escapeHtml(opp.detail_url)}" target="_blank" class="btn btn--outline btn--sm">詳細を見る</a>` : ""}
             <button class="btn btn--primary btn--sm" onclick="analyzeOpportunity('${escapeHtml(oppId)}')">AI詳細分析</button>
@@ -825,13 +761,10 @@ function renderOpportunities(items) {
 
   // Upgrade CTA for free/trial tier
   if (currentTier !== "paid" && items.length > visibleCount) {
-    const ctaText = currentTier === "trial"
-      ? "有料プランにアップグレードすると全件確認できます"
-      : "有料プランにアップグレードすると全件確認できます";
     html += `
       <div class="upgrade-cta">
         <p><strong>${items.length - visibleCount}件</strong>の案件がぼかし表示されています</p>
-        <p>${ctaText}</p>
+        <p>有料プランにアップグレードすると全件確認できます</p>
         <button class="btn btn--primary" onclick="switchTab('subscription')">プランをアップグレード</button>
       </div>
     `;

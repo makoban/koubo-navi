@@ -2,18 +2,17 @@
  * koubo-navi-proxy - Cloudflare Worker
  *
  * Routes:
- *   POST /api/analyze-company       - 会社URL分析（Gemini API）
+ *   POST /api/analyze-company       - 会社URL分析（Gemini API）+ 業種カテゴリ抽出
  *   GET  /api/areas                  - 利用可能エリア一覧
  *   GET  /api/user/profile           - ユーザープロフィール取得
  *   PUT  /api/user/profile           - プロフィール更新
  *   PUT  /api/user/areas             - エリア設定更新
- *   GET  /api/user/opportunities     - マッチング案件一覧
- *   POST /api/opportunity/analyze    - AI詳細分析
+ *   GET  /api/user/opportunities     - 業種マッチ案件一覧（新着順）
+ *   POST /api/opportunity/analyze    - AI詳細分析（キャッシュ対応）
  *   GET  /api/user/subscription      - サブスク情報取得
  *   POST /api/checkout               - Stripe Checkout（サブスク）
  *   POST /api/webhook                - Stripe Webhook（サブスク）
  *   POST /api/cancel-subscription    - サブスク解約
- *   POST /api/user/screen             - 初期30日スクリーニング
  *
  * Required secrets (wrangler secret put):
  *   GEMINI_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, SUPABASE_SERVICE_KEY
@@ -196,10 +195,14 @@ async function handleAnalyzeCompany(request, env) {
   "strengths": ["強み1", "強み2"],
   "target_industries": ["対象業界1"],
   "qualifications": ["保有資格（推定）"],
-  "matching_keywords": ["公募マッチング用キーワード1", "キーワード2"]
+  "matching_keywords": ["公募マッチング用キーワード1", "キーワード2"],
+  "industry_categories": ["該当する業種カテゴリ"]
 }
 
 matching_keywordsには行政案件を見つけるためのキーワードを10個以上生成してください。
+
+industry_categoriesには以下の10カテゴリから該当するもの全てを選択してください（複数可）:
+IT・DX / 建設・土木 / コンサル・調査 / 広告・クリエイティブ / 設備・物品 / 清掃・管理 / 医療・福祉 / 教育・研修 / 環境・エネルギー / その他
 
 ウェブサイトテキスト:
 ${pageText}`;
@@ -232,6 +235,11 @@ ${pageText}`;
     `/company_profiles?user_id=eq.${user_id}`,
     "DELETE", null, env, { prefer: "return=minimal" }
   );
+  // industry_categories のバリデーション
+  const validCategories = ["IT・DX", "建設・土木", "コンサル・調査", "広告・クリエイティブ", "設備・物品", "清掃・管理", "医療・福祉", "教育・研修", "環境・エネルギー", "その他"];
+  const industryCategories = (profile.industry_categories || []).filter(c => validCategories.includes(c));
+  if (industryCategories.length === 0) industryCategories.push("その他");
+
   await supabaseRequest("/company_profiles", "POST", {
     user_id,
     company_name: profile.company_name || null,
@@ -242,6 +250,7 @@ ${pageText}`;
     target_industries: profile.target_industries || [],
     qualifications: profile.qualifications || [],
     matching_keywords: profile.matching_keywords || [],
+    industry_categories: industryCategories,
     raw_analysis: profile,
   }, env, { prefer: "return=minimal" });
 
@@ -395,32 +404,43 @@ async function handleGetOpportunities(request, env) {
   const trialEnd = user.trial_ends_at ? new Date(user.trial_ends_at) : null;
   const isActive = user.status === "active";
   const isTrial = user.status === "trial" && trialEnd && trialEnd > now;
-  // paid=全件表示, trial=10件表示+ぼかし25件, free=5件表示+ぼかし30件
   const tier = isActive ? "paid" : isTrial ? "trial" : "free";
   const tierMaxResults = isActive ? 100 : 35;
 
   const url = new URL(request.url);
-  const scoreMin = parseInt(url.searchParams.get("score_min") || "0");
   const requestedLimit = parseInt(url.searchParams.get("limit") || "200");
   const maxLimit = Math.min(requestedLimit, tierMaxResults);
-  const category = url.searchParams.get("category");
+  const industryFilter = url.searchParams.get("industry"); // 業種カテゴリフィルター
 
-  // 1. ユーザーの登録エリアを取得
+  // 1. ユーザーの登録エリアと業種カテゴリを取得
   const areasResult = await supabaseRequest(
     `/user_areas?user_id=eq.${user_id}&active=eq.true&select=area_id`,
     "GET", null, env
   );
   const userAreaIds = (areasResult.data || []).map(a => a.area_id);
+
+  const profileResult = await supabaseRequest(
+    `/company_profiles?user_id=eq.${user_id}&select=industry_categories`,
+    "GET", null, env
+  );
+  const userIndustries = profileResult.data?.[0]?.industry_categories || [];
+
   if (userAreaIds.length === 0) {
     return jsonResponse({ opportunities: [], total: 0, total_unfiltered: 0, tier, max_results: tierMaxResults });
   }
 
-  // 2. 登録エリアの全案件を opportunities テーブルから取得
+  // 2. 業種カテゴリ + エリアで案件をフィルター
   const areaFilter = userAreaIds.map(id => encodeURIComponent(id)).join(",");
-  const oppResult = await supabaseRequest(
-    `/opportunities?area_id=in.(${areaFilter})&select=*&order=scraped_at.desc&limit=500`,
-    "GET", null, env
-  );
+  let queryPath = `/opportunities?area_id=in.(${areaFilter})&select=*&order=scraped_at.desc&limit=500`;
+
+  // 業種カテゴリフィルター（ユーザーの業種 or URL指定の業種）
+  const filterCategories = industryFilter ? [industryFilter] : userIndustries;
+  if (filterCategories.length > 0) {
+    const catFilter = filterCategories.map(c => encodeURIComponent(c)).join(",");
+    queryPath = `/opportunities?area_id=in.(${areaFilter})&industry_category=in.(${catFilter})&select=*&order=scraped_at.desc&limit=500`;
+  }
+
+  const oppResult = await supabaseRequest(queryPath, "GET", null, env);
   if (!oppResult.ok) return errorResponse("案件取得失敗", 500);
 
   // 期限切れの案件を除外
@@ -430,23 +450,19 @@ async function handleGetOpportunities(request, env) {
     return opp.deadline >= today;
   });
 
-  // 3. user_opportunities からスコア情報を取得
+  // 3. user_opportunities からキャッシュ情報を取得
   const uoResult = await supabaseRequest(
-    `/user_opportunities?user_id=eq.${user_id}&select=opportunity_id,match_score,match_reason,recommendation,rank_position,is_dismissed,detailed_analysis`,
+    `/user_opportunities?user_id=eq.${user_id}&select=opportunity_id,is_dismissed,detailed_analysis`,
     "GET", null, env
   );
   const uoMap = {};
   (uoResult.data || []).forEach(uo => { uoMap[uo.opportunity_id] = uo; });
 
-  // 4. マージ: 全案件にスコア情報を付与
+  // 4. マージ: 新しい順に表示
   let items = allOpps.map(opp => {
     const uo = uoMap[opp.id];
     return {
       opportunity_id: opp.id,
-      match_score: uo ? uo.match_score : null,
-      match_reason: uo ? uo.match_reason : null,
-      recommendation: uo ? uo.recommendation : null,
-      rank_position: uo ? uo.rank_position : null,
       is_dismissed: uo ? uo.is_dismissed : false,
       detailed_analysis: uo ? uo.detailed_analysis : null,
       opportunities: opp,
@@ -456,33 +472,10 @@ async function handleGetOpportunities(request, env) {
   // dismissed を除外
   items = items.filter(i => !i.is_dismissed);
 
-  // スコアフィルター（0=全スコア の場合は未評価も含む）
-  if (scoreMin > 0) {
-    items = items.filter(i => i.match_score !== null && i.match_score >= scoreMin);
-  }
-
-  // カテゴリフィルター
-  if (category) {
-    items = items.filter(i => i.opportunities?.category === category);
-  }
-
-  // ソート: スコアあり（降順）→ スコアなし（日付順）
-  items.sort((a, b) => {
-    if (a.match_score !== null && b.match_score !== null) return b.match_score - a.match_score;
-    if (a.match_score !== null) return -1;
-    if (b.match_score !== null) return 1;
-    return 0;
-  });
-
   const totalUnfiltered = items.length;
 
   // ティア制限
   items = items.slice(0, maxLimit);
-
-  // ランキング番号を付与
-  items.forEach((item, idx) => {
-    item.rank_position = item.rank_position || (idx + 1);
-  });
 
   return jsonResponse({
     opportunities: items,
@@ -490,6 +483,7 @@ async function handleGetOpportunities(request, env) {
     total_unfiltered: totalUnfiltered,
     tier,
     max_results: tierMaxResults,
+    user_industries: userIndustries,
     visible_count: isActive ? items.length : isTrial ? Math.min(10, items.length) : Math.min(5, items.length),
   });
 }
@@ -535,12 +529,12 @@ async function handleAnalyzeOpportunity(request, env) {
   );
   const profile = profileResult.data?.[0] || {};
 
-  // マッチング情報を取得
-  const matchResult = await supabaseRequest(
-    `/user_opportunities?user_id=eq.${user_id}&opportunity_id=eq.${opportunity_id}&select=match_score,match_reason,recommendation`,
+  // user_opportunities のレコード有無を確認
+  const uoCheck = await supabaseRequest(
+    `/user_opportunities?user_id=eq.${user_id}&opportunity_id=eq.${opportunity_id}&select=id`,
     "GET", null, env
   );
-  const matchInfo = matchResult.data?.[0] || {};
+  const hasUoRecord = uoCheck.data && uoCheck.data.length > 0;
 
   // detail_url がある場合はページを取得
   let detailText = "";
@@ -570,10 +564,13 @@ async function handleAnalyzeOpportunity(request, env) {
 【案件情報】
 タイトル: ${opp.title || "不明"}
 カテゴリ: ${opp.category || "不明"}
+業種: ${opp.industry_category || "不明"}
 発注機関: ${opp.organization || "不明"}
 手法: ${opp.method || "不明"}
 締切: ${opp.deadline || "不明"}
+予算: ${opp.budget || "不明"}
 エリア: ${opp.area_id || "不明"}
+${opp.detailed_summary ? `要約: ${opp.detailed_summary}` : ""}
 ${detailText ? `\n【案件詳細ページの内容】\n${detailText}\n` : ""}
 【企業プロフィール】
 会社名: ${profile.company_name || "不明"}
@@ -582,10 +579,6 @@ ${detailText ? `\n【案件詳細ページの内容】\n${detailText}\n` : ""}
 強み: ${(profile.strengths || []).join("、")}
 対象業界: ${(profile.target_industries || []).join("、")}
 保有資格: ${(profile.qualifications || []).join("、")}
-
-【既存マッチング情報】
-マッチスコア: ${matchInfo.match_score || "不明"}%
-マッチ理由: ${matchInfo.match_reason || "不明"}
 
 以下のJSON形式で出力してください:
 {
@@ -625,18 +618,34 @@ recommended_preparation_daysは準備に必要な日数の目安です。`;
   // Gemini が配列でラップする場合の対応
   if (Array.isArray(analysis)) analysis = analysis[0] || {};
 
-  // DBに保存（キャッシュ）
-  await supabaseRequest(
-    `/user_opportunities?user_id=eq.${user_id}&opportunity_id=eq.${opportunity_id}`,
-    "PATCH",
-    {
-      detailed_analysis: analysis,
-      analysis_requested_at: new Date().toISOString(),
-      analysis_completed_at: new Date().toISOString(),
-    },
-    env,
-    { prefer: "return=minimal" }
-  );
+  // DBに保存（キャッシュ）- レコードなければINSERT、あればPATCH
+  if (hasUoRecord) {
+    await supabaseRequest(
+      `/user_opportunities?user_id=eq.${user_id}&opportunity_id=eq.${opportunity_id}`,
+      "PATCH",
+      {
+        detailed_analysis: analysis,
+        analysis_requested_at: new Date().toISOString(),
+        analysis_completed_at: new Date().toISOString(),
+      },
+      env,
+      { prefer: "return=minimal" }
+    );
+  } else {
+    await supabaseRequest(
+      "/user_opportunities",
+      "POST",
+      {
+        user_id,
+        opportunity_id,
+        detailed_analysis: analysis,
+        analysis_requested_at: new Date().toISOString(),
+        analysis_completed_at: new Date().toISOString(),
+      },
+      env,
+      { prefer: "return=minimal" }
+    );
+  }
 
   return jsonResponse(analysis);
 }
@@ -915,6 +924,10 @@ async function handleRegisterUser(request, env) {
 
   // プロフィールを保存（DELETE + POST で確実にupsert）
   if (profile && typeof profile === "object") {
+    const regValidCategories = ["IT・DX", "建設・土木", "コンサル・調査", "広告・クリエイティブ", "設備・物品", "清掃・管理", "医療・福祉", "教育・研修", "環境・エネルギー", "その他"];
+    const regIndustryCategories = (profile.industry_categories || []).filter(c => regValidCategories.includes(c));
+    if (regIndustryCategories.length === 0) regIndustryCategories.push("その他");
+
     await supabaseRequest(`/company_profiles?user_id=eq.${user_id}`, "DELETE", null, env, { prefer: "return=minimal" });
     await supabaseRequest("/company_profiles", "POST", {
       user_id,
@@ -924,6 +937,7 @@ async function handleRegisterUser(request, env) {
       services: profile.services || [],
       strengths: profile.strengths || [],
       matching_keywords: profile.matching_keywords || [],
+      industry_categories: regIndustryCategories,
     }, env, { prefer: "return=minimal" });
   }
 
@@ -949,152 +963,6 @@ async function handleRegisterUser(request, env) {
 }
 
 // ---------------------------------------------------------------------------
-// POST /api/user/screen - 初期30日スクリーニング
-// ---------------------------------------------------------------------------
-
-async function handleInitialScreen(request, env, ctx) {
-  const { user_id } = await getUserFromJWT(request, env);
-  if (!user_id) return errorResponse("認証が必要です", 401);
-
-  // 既にスクリーニング済みかチェック
-  const userCheck = await supabaseRequest(
-    `/koubo_users?id=eq.${user_id}&select=initial_screening_done`,
-    "GET", null, env
-  );
-  if (userCheck.data?.[0]?.initial_screening_done) {
-    return jsonResponse({ status: "already_done" });
-  }
-
-  // 即時レスポンスを返し、バックグラウンドで処理
-  ctx.waitUntil((async () => {
-    try {
-      // ユーザーのエリアを取得
-      const areasResult = await supabaseRequest(
-        `/user_areas?user_id=eq.${user_id}&active=eq.true&select=area_id`,
-        "GET", null, env
-      );
-      const areaIds = (areasResult.data || []).map(a => a.area_id);
-      if (areaIds.length === 0) return;
-
-      // ユーザーのプロフィールを取得
-      const profileResult = await supabaseRequest(
-        `/company_profiles?user_id=eq.${user_id}&select=*&limit=1`,
-        "GET", null, env
-      );
-      const profile = profileResult.data?.[0] || {};
-      const keywords = profile.matching_keywords || [];
-
-      // 過去30日分の案件を取得
-      const since = new Date(Date.now() - 30 * 86400000).toISOString();
-      const areaFilter = areaIds.map(a => `area_id.eq.${a}`).join(",");
-      const oppsResult = await supabaseRequest(
-        `/opportunities?or=(${areaFilter})&scraped_at=gte.${since}&select=id,title,category,organization,method,area_id,deadline&order=scraped_at.desc&limit=50`,
-        "GET", null, env
-      );
-      const opportunities = oppsResult.data || [];
-      if (opportunities.length === 0) {
-        await supabaseRequest(`/koubo_users?id=eq.${user_id}`, "PATCH", {
-          initial_screening_done: true,
-          initial_screening_at: new Date().toISOString(),
-        }, env, { prefer: "return=minimal" });
-        return;
-      }
-
-      // 15件ずつバッチでGeminiマッチング
-      const batchSize = 15;
-      let allMatches = [];
-
-      for (let i = 0; i < opportunities.length; i += batchSize) {
-        const batch = opportunities.slice(i, i + batchSize);
-        const oppList = batch.map((o, idx) => `${idx + 1}. タイトル: ${o.title || "不明"} / カテゴリ: ${o.category || "不明"} / 発注機関: ${o.organization || "不明"} / 手法: ${o.method || "不明"}`).join("\n");
-
-        const prompt = `あなたは公募案件と企業のマッチング評価の専門家です。
-
-【企業プロフィール】
-会社名: ${profile.company_name || "不明"}
-事業分野: ${(profile.business_areas || []).join("、")}
-サービス: ${(profile.services || []).join("、")}
-強み: ${(profile.strengths || []).join("、")}
-キーワード: ${keywords.join("、")}
-
-【案件リスト】
-${oppList}
-
-各案件について以下のJSON配列で出力してください:
-[
-  {
-    "index": 1,
-    "match_score": 75,
-    "match_reason": "マッチする理由（1-2文）",
-    "recommendation": "応募推奨 or 検討 or 見送り"
-  }
-]
-
-match_scoreは0-100の整数で、企業と案件の適合度を評価してください。
-`;
-
-        const geminiUrl = `${GEMINI_API_BASE}/v1beta/models/gemini-2.0-flash:generateContent?key=${env.GEMINI_API_KEY}`;
-        try {
-          const geminiResp = await fetch(geminiUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { temperature: 0.2, maxOutputTokens: 4096, responseMimeType: "application/json" },
-            }),
-          });
-          if (geminiResp.ok) {
-            const gd = await geminiResp.json();
-            const rawText = gd?.candidates?.[0]?.content?.parts?.[0]?.text ?? "[]";
-            let matches;
-            try { matches = JSON.parse(rawText); } catch { matches = []; }
-            if (!Array.isArray(matches)) matches = [];
-
-            for (const m of matches) {
-              const oppIdx = (m.index || 0) - 1;
-              if (oppIdx >= 0 && oppIdx < batch.length && m.match_score >= 0) {
-                allMatches.push({
-                  user_id,
-                  opportunity_id: batch[oppIdx].id,
-                  match_score: Math.min(100, Math.max(0, Math.round(m.match_score))),
-                  match_reason: (m.match_reason || "").slice(0, 500),
-                  recommendation: m.recommendation || "検討",
-                });
-              }
-            }
-          }
-        } catch { /* バッチ失敗は無視して続行 */ }
-      }
-
-      // ランキング付与（スコア降順）
-      allMatches.sort((a, b) => b.match_score - a.match_score);
-      allMatches.forEach((m, idx) => { m.rank_position = idx + 1; });
-
-      // DBに保存
-      for (const m of allMatches) {
-        await supabaseRequest("/user_opportunities", "POST", {
-          ...m,
-          is_dismissed: false,
-        }, env, {
-          prefer: "resolution=merge-duplicates,return=minimal",
-        });
-      }
-
-      // スクリーニング完了フラグ更新
-      await supabaseRequest(`/koubo_users?id=eq.${user_id}`, "PATCH", {
-        initial_screening_done: true,
-        initial_screening_at: new Date().toISOString(),
-      }, env, { prefer: "return=minimal" });
-
-    } catch (err) {
-      console.error("初期スクリーニングエラー:", err.message);
-    }
-  })());
-
-  return jsonResponse({ status: "screening_started" });
-}
-
-// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 
@@ -1117,7 +985,6 @@ async function router(request, env, ctx) {
   if (path === "/api/webhook" && method === "POST") return handleWebhook(request, env, ctx);
   if (path === "/api/cancel-subscription" && method === "POST") return handleCancelSubscription(request, env);
   if (path === "/api/register" && method === "POST") return handleRegisterUser(request, env);
-  if (path === "/api/user/screen" && method === "POST") return handleInitialScreen(request, env, ctx);
 
   return jsonResponse({ error: `未定義: ${method} ${path}` }, 404);
 }

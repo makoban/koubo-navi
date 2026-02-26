@@ -1,7 +1,7 @@
 """公募ナビAI - 詳細ページスクレイパー
 
 各案件のdetail_urlを巡回し、Geminiで構造化データを抽出する。
-抽出項目: published_date, deadline, budget, requirements, detailed_summary, difficulty
+抽出項目: published_date, deadline, budget, requirements, detailed_summary, difficulty, industry_category
 """
 
 import logging
@@ -106,7 +106,8 @@ def _extract_details(text: str, opp: dict) -> dict | None:
   "budget": "予算・契約金額（例: 1,000万円、500,000円。不明ならnull）",
   "requirements": "参加資格・応募条件（50文字以内で要約）",
   "detailed_summary": "この案件の具体的な業務内容を200文字以内で要約",
-  "difficulty": "この案件の参入難易度を判定（高/中/低）。判定基準: 高=特殊資格・大規模実績必須、中=一般的な資格・実績で可、低=資格不要・小規模"
+  "difficulty": "この案件の参入難易度を判定（高/中/低）。判定基準: 高=特殊資格・大規模実績必須、中=一般的な資格・実績で可、低=資格不要・小規模",
+  "industry_category": "以下の10カテゴリから最も適切なものを1つ選択: IT・DX / 建設・土木 / コンサル・調査 / 広告・クリエイティブ / 設備・物品 / 清掃・管理 / 医療・福祉 / 教育・研修 / 環境・エネルギー / その他"
 }}
 
 ページテキスト:
@@ -128,6 +129,15 @@ def _extract_details(text: str, opp: dict) -> dict | None:
         # difficulty は 高/中/低 のみ許可
         if result.get("difficulty") not in ("高", "中", "低"):
             result["difficulty"] = None
+
+        # industry_category バリデーション
+        valid_categories = (
+            "IT・DX", "建設・土木", "コンサル・調査", "広告・クリエイティブ",
+            "設備・物品", "清掃・管理", "医療・福祉", "教育・研修",
+            "環境・エネルギー", "その他",
+        )
+        if result.get("industry_category") not in valid_categories:
+            result["industry_category"] = "その他"
 
         # detailed_summary の長さ制限
         if result.get("detailed_summary") and len(result["detailed_summary"]) > 300:

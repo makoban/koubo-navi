@@ -1,4 +1,8 @@
-"""公募ナビAI - メール通知モジュール（Resend API）"""
+"""公募ナビAI - メール通知モジュール v3.0（Resend API）
+
+業種カテゴリマッチの新着案件を通知。
+各案件のAI詳細分析を生成 or キャッシュ取得し、メールにインライン表示。
+"""
 
 import json
 import logging
@@ -8,25 +12,113 @@ import requests
 
 import config
 import db
+from gemini_client import call_gemini, parse_json_response
 
 logger = logging.getLogger(__name__)
 
 
-def send_notification(user: dict, matches: list[dict], tier: str = "free", total_count: int = 0) -> bool:
-    """ユーザーにマッチング結果メールを送信する。
-
-    Args:
-        user: koubo_users レコード。
-        matches: 通知対象のマッチング結果。
-        tier: "paid" or "free"。
-        total_count: フィルタ前の全件数。
+def notify_user(user: dict) -> int:
+    """ユーザーの業種マッチ新着案件を取得して通知する。
 
     Returns:
-        送信成功なら True。
+        通知した案件数。
     """
-    if not matches:
-        return False
+    user_id = user["id"]
 
+    # ユーザーの業種カテゴリを取得
+    industry_cats = db.get_user_industry_categories(user_id)
+    if not industry_cats:
+        logger.info("業種カテゴリ未設定: %s", user_id)
+        return 0
+
+    # 業種マッチの新着案件を取得（過去24時間）
+    new_opps = db.get_new_opportunities_by_industry(industry_cats, since_hours=24)
+    if not new_opps:
+        return 0
+
+    # ティア判定
+    tier = db.get_user_tier(user)
+    max_in_email = 20 if tier == "paid" else 5
+
+    # プロフィール取得（AI分析用）
+    profile = db.get_user_profile(user_id)
+    if not profile:
+        logger.warning("プロフィール未設定: %s", user_id)
+        return 0
+
+    # 各案件のAI詳細分析を生成 or キャッシュ取得
+    analyzed_opps = []
+    for opp in new_opps[:max_in_email]:
+        try:
+            analysis = db.get_cached_analysis(user_id, opp["id"])
+            if not analysis:
+                analysis = _generate_analysis(profile, opp)
+                if analysis:
+                    db.save_detailed_analysis(user_id, opp["id"], analysis)
+            analyzed_opps.append({"opportunity": opp, "analysis": analysis})
+        except Exception as exc:
+            logger.debug("分析失敗 %s: %s", opp["id"], exc)
+            analyzed_opps.append({"opportunity": opp, "analysis": None})
+
+    if not analyzed_opps:
+        return 0
+
+    # メール送信
+    success = _send_notification(user, analyzed_opps, tier=tier, total_count=len(new_opps))
+
+    if success:
+        _log_notification(user_id, len(analyzed_opps), "sent")
+    else:
+        _log_notification(user_id, len(analyzed_opps), "failed")
+
+    return len(analyzed_opps) if success else 0
+
+
+def _generate_analysis(profile: dict, opp: dict) -> dict | None:
+    """案件のAI詳細分析をGeminiで生成する。"""
+    prompt = f"""あなたは公募案件と企業のマッチング分析の専門家です。
+以下の案件情報と企業プロフィールを照らし合わせて、詳細な分析をJSON形式で出力してください。
+
+【案件情報】
+タイトル: {opp.get('title', '不明')}
+カテゴリ: {opp.get('category', '不明')}
+発注機関: {opp.get('organization', '不明')}
+業種: {opp.get('industry_category', '不明')}
+締切: {opp.get('deadline', '不明')}
+予算: {opp.get('budget', '不明')}
+要約: {opp.get('detailed_summary') or opp.get('summary', '不明')}
+
+【企業プロフィール】
+会社名: {profile.get('company_name', '不明')}
+事業分野: {', '.join(profile.get('business_areas', []))}
+サービス: {', '.join(profile.get('services', []))}
+強み: {', '.join(profile.get('strengths', []))}
+
+出力:
+{{
+  "summary": "総合評価（150文字程度）",
+  "match_points": ["マッチポイント1", "ポイント2", "ポイント3"],
+  "concerns": ["懸念点1", "懸念点2"],
+  "actions": ["アクション1", "アクション2", "アクション3"]
+}}"""
+
+    try:
+        response = call_gemini(prompt, json_mode=True, max_tokens=2048)
+        result = parse_json_response(response)
+        if isinstance(result, dict):
+            return result
+    except Exception as exc:
+        logger.debug("Gemini分析失敗: %s", exc)
+    return None
+
+
+def _send_notification(
+    user: dict,
+    analyzed_opps: list[dict],
+    tier: str = "free",
+    total_count: int = 0,
+) -> bool:
+    """メール送信。"""
     email = user.get("notification_email")
     if not email:
         logger.warning("通知先メールなし: user=%s", user.get("id"))
@@ -36,9 +128,8 @@ def send_notification(user: dict, matches: list[dict], tier: str = "free", total
         logger.warning("RESEND_API_KEY 未設定のため通知スキップ")
         return False
 
-    # メール本文を組み立て
-    html_body = _build_email_html(matches, tier=tier, total_count=total_count)
-    subject = f"【公募ナビAI】本日の新着マッチング TOP {len(matches)}"
+    html_body = _build_email_html(analyzed_opps, tier=tier, total_count=total_count)
+    subject = f"【公募ナビAI】本日の新着案件 {len(analyzed_opps)}件"
 
     try:
         resp = requests.post(
@@ -56,45 +147,11 @@ def send_notification(user: dict, matches: list[dict], tier: str = "free", total
             timeout=15,
         )
         resp.raise_for_status()
-        logger.info("メール送信成功: %s (%d件)", email, len(matches))
+        logger.info("メール送信成功: %s (%d件)", email, len(analyzed_opps))
         return True
-
     except Exception as exc:
         logger.error("メール送信失敗: %s: %s", email, exc)
         return False
-
-
-def notify_user(user: dict) -> int:
-    """ユーザーの未通知マッチを取得して通知する。
-
-    Returns:
-        通知した案件数。
-    """
-    user_id = user["id"]
-    threshold = user.get("notification_threshold", config.DEFAULT_MATCH_THRESHOLD)
-
-    matches = db.get_unnotified_matches(user_id, threshold)
-    if not matches:
-        return 0
-
-    # ティア別制限: 無料ユーザーはTOP10のみ
-    tier = db.get_user_tier(user)
-    max_in_email = 100 if tier == "paid" else 10
-    total_matches = len(matches)
-    matches_to_send = matches[:max_in_email]
-
-    success = send_notification(user, matches_to_send, tier=tier, total_count=total_matches)
-
-    if success:
-        opp_ids = [m["opportunity_id"] for m in matches]
-        db.mark_as_notified(user_id, opp_ids)
-
-        # notifications テーブルに記録
-        _log_notification(user_id, len(matches), "sent")
-    else:
-        _log_notification(user_id, len(matches), "failed")
-
-    return len(matches) if success else 0
 
 
 def _log_notification(user_id: str, count: int, status: str):
@@ -120,66 +177,97 @@ def _log_notification(user_id: str, count: int, status: str):
         logger.debug("通知ログ保存失敗: %s", exc)
 
 
-def _build_email_html(matches: list[dict], tier: str = "free", total_count: int = 0) -> str:
-    """マッチング結果のHTMLメールを生成する（ランキング付き）。"""
+def _build_email_html(
+    analyzed_opps: list[dict],
+    tier: str = "free",
+    total_count: int = 0,
+) -> str:
+    """新着案件 + AI詳細分析のHTMLメールを生成する。"""
     rows = []
-    for idx, m in enumerate(matches, start=1):
-        opp = m.get("opportunities", {}) or {}
-        score = m.get("match_score", 0)
-        rank = m.get("rank_position", idx)
-        title = opp.get("title", m.get("title", "不明"))
+    for item in analyzed_opps:
+        opp = item.get("opportunity", {})
+        analysis = item.get("analysis") or {}
+
+        title = opp.get("title", "不明")
         org = opp.get("organization", "不明")
-        category = opp.get("category", "")
+        category = opp.get("industry_category", opp.get("category", ""))
         deadline = opp.get("deadline", "")
-        reason = m.get("match_reason", "")
+        budget = opp.get("budget", "")
+        difficulty = opp.get("difficulty", "")
+        summary = opp.get("detailed_summary") or opp.get("summary", "")
         detail_url = opp.get("detail_url", "")
-        recommendation = m.get("recommendation", "")
 
-        # スコアバッジ色
-        if score >= 80:
-            badge_color = "#22c55e"
-        elif score >= 60:
-            badge_color = "#f59e0b"
-        else:
-            badge_color = "#94a3b8"
+        # AI分析結果
+        ai_summary = analysis.get("summary", "")
+        match_points = analysis.get("match_points", [])
+        concerns = analysis.get("concerns", [])
+        actions = analysis.get("actions", [])
 
-        # ランキングバッジ色
-        if rank <= 3:
-            rank_color = "#ffd700"
-        elif rank <= 10:
-            rank_color = "#c9a96e"
-        else:
-            rank_color = "#94a3b8"
+        # 業種カテゴリバッジ色
+        cat_color = "#c9a96e"
+
+        # 難易度バッジ
+        diff_html = ""
+        if difficulty:
+            diff_color = "#f87171" if difficulty == "高" else "#fbbf24" if difficulty == "中" else "#4ade80"
+            diff_html = f'<span style="background:rgba(0,0,0,0.3);color:{diff_color};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">難易度: {difficulty}</span>'
 
         link_html = ""
         if detail_url:
-            link_html = f'<a href="{detail_url}" style="color:#f59e0b;">詳細を見る</a>'
+            link_html = f'<a href="{detail_url}" style="color:#c9a96e;font-size:13px;">詳細ページ →</a>'
+
+        # AI分析セクション
+        ai_html = ""
+        if ai_summary:
+            ai_html += f'<div style="margin-top:10px;padding:10px;background:rgba(0,0,0,0.2);border-radius:6px;border-left:3px solid #c9a96e;">'
+            ai_html += f'<div style="font-size:13px;color:#f1f5f9;line-height:1.7;margin-bottom:8px;">{ai_summary}</div>'
+
+            if match_points:
+                ai_html += '<div style="margin-bottom:6px;">'
+                for pt in match_points[:3]:
+                    ai_html += f'<div style="font-size:12px;color:#4ade80;line-height:1.6;">✓ {pt}</div>'
+                ai_html += '</div>'
+
+            if concerns:
+                for c in concerns[:2]:
+                    ai_html += f'<div style="font-size:12px;color:#fbbf24;line-height:1.6;">⚠ {c}</div>'
+
+            if actions:
+                ai_html += '<div style="margin-top:6px;">'
+                for i, a in enumerate(actions[:3], 1):
+                    ai_html += f'<div style="font-size:12px;color:#94a3b8;line-height:1.6;">{i}. {a}</div>'
+                ai_html += '</div>'
+
+            ai_html += '</div>'
 
         rows.append(f"""
         <tr>
-          <td style="padding:12px;border-bottom:1px solid #333;">
-            <span style="color:{rank_color};font-size:16px;font-weight:bold;margin-right:8px;">#{rank}</span>
-            <span style="background:{badge_color};color:#fff;padding:2px 8px;border-radius:4px;font-size:13px;font-weight:bold;">{score}%</span>
-            <span style="margin-left:8px;color:#94a3b8;font-size:12px;">{recommendation}</span>
-            <div style="margin-top:6px;font-size:15px;font-weight:bold;color:#f1f5f9;">{title}</div>
-            <div style="margin-top:3px;font-size:13px;color:#94a3b8;">{org} / {category}</div>
-            {f'<div style="margin-top:3px;font-size:12px;color:#f59e0b;">締切: {deadline}</div>' if deadline else ''}
-            <div style="margin-top:4px;font-size:13px;color:#cbd5e1;">{reason}</div>
-            {f'<div style="margin-top:6px;">{link_html}</div>' if link_html else ''}
+          <td style="padding:16px;border-bottom:1px solid #333;">
+            <span style="background:rgba(201,169,110,0.15);color:{cat_color};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">{category}</span>
+            {diff_html}
+            <div style="margin-top:8px;font-size:15px;font-weight:bold;color:#f1f5f9;">{title}</div>
+            <div style="margin-top:3px;font-size:13px;color:#94a3b8;">{org}</div>
+            <div style="margin-top:4px;font-size:12px;display:flex;gap:12px;flex-wrap:wrap;">
+              {f'<span style="color:#fbbf24;">締切: {deadline}</span>' if deadline else ''}
+              {f'<span style="color:#4ade80;">{budget}</span>' if budget else ''}
+            </div>
+            {f'<div style="margin-top:6px;font-size:13px;color:#cbd5e1;line-height:1.6;">{summary[:150]}</div>' if summary else ''}
+            {ai_html}
+            {f'<div style="margin-top:8px;">{link_html}</div>' if link_html else ''}
           </td>
         </tr>""")
 
     # 無料ユーザー向けアップグレードCTA
     upgrade_html = ""
-    if tier == "free" and total_count > len(matches):
-        remaining = total_count - len(matches)
+    if tier == "free" and total_count > len(analyzed_opps):
+        remaining = total_count - len(analyzed_opps)
         upgrade_html = f"""
     <div style="background:#1a1f35;border-radius:8px;padding:20px;text-align:center;margin-top:16px;border:1px solid #c9a96e33;">
       <p style="color:#c9a96e;font-size:14px;font-weight:bold;margin:0 0 8px;">
-        他に {remaining}件 のマッチング案件があります
+        他に {remaining}件 の業種マッチ案件があります
       </p>
       <p style="color:#94a3b8;font-size:13px;margin:0 0 12px;">
-        有料プランなら最大100件のランキングを確認できます
+        有料プランなら最大20件の新着案件をメールで受け取れます
       </p>
       <a href="https://koubo-navi.bantex.jp?upgrade=1" style="display:inline-block;background:#c9a96e;color:#0a0e1a;padding:10px 24px;border-radius:8px;font-weight:bold;text-decoration:none;font-size:13px;">
         プランをアップグレード
@@ -195,8 +283,8 @@ def _build_email_html(matches: list[dict], tier: str = "free", total_count: int 
   <div style="max-width:600px;margin:0 auto;padding:24px;">
     <div style="text-align:center;margin-bottom:24px;">
       <h1 style="color:#c9a96e;font-size:22px;margin:0;">公募ナビAI</h1>
-      <p style="color:#f1f5f9;font-size:16px;font-weight:bold;margin:12px 0 4px;">本日の新着マッチング TOP {len(matches)}</p>
-      <p style="color:#94a3b8;font-size:13px;margin:0;">{today}</p>
+      <p style="color:#f1f5f9;font-size:16px;font-weight:bold;margin:12px 0 4px;">本日の新着案件 {len(analyzed_opps)}件</p>
+      <p style="color:#94a3b8;font-size:13px;margin:0;">{today} / 業種マッチ</p>
     </div>
 
     <table style="width:100%;border-collapse:collapse;background:#1a1f35;border-radius:8px;overflow:hidden;">
@@ -205,10 +293,6 @@ def _build_email_html(matches: list[dict], tier: str = "free", total_count: int 
 
     {upgrade_html}
 
-    <div style="background:#1a1f3588;border-radius:8px;padding:12px 16px;margin-top:16px;text-align:center;">
-      <p style="color:#94a3b8;font-size:12px;margin:0;">💡 案件をクリックして「AI詳細分析」で応募のヒントが得られます</p>
-    </div>
-
     <div style="text-align:center;margin-top:24px;">
       <a href="https://koubo-navi.bantex.jp" style="display:inline-block;background:#c9a96e;color:#0a0e1a;padding:12px 32px;border-radius:8px;font-weight:bold;text-decoration:none;font-size:15px;">
         ダッシュボードで確認する
@@ -216,7 +300,7 @@ def _build_email_html(matches: list[dict], tier: str = "free", total_count: int 
     </div>
 
     <div style="text-align:center;margin-top:32px;color:#64748b;font-size:11px;">
-      <p>公募ナビAI by bantex</p>
+      <p>公募ナビAI v3.0 by bantex</p>
       <p>通知設定はダッシュボードから変更できます</p>
     </div>
   </div>
