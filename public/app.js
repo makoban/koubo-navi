@@ -55,10 +55,16 @@ async function loadLandingStats() {
   try {
     const res = await fetch(`${WORKER_BASE}/api/stats`);
     const data = await res.json();
+    // Proof-bar
     const el1 = document.getElementById("statRecentWeek");
     const el2 = document.getElementById("statTotalActive");
     if (el1 && data.recent_week != null) el1.textContent = data.recent_week.toLocaleString() + "件";
     if (el2 && data.total_active != null) el2.textContent = data.total_active.toLocaleString() + "件";
+    // Hero banner
+    const h1 = document.getElementById("heroTotalActive");
+    const h2 = document.getElementById("heroRecentWeek");
+    if (h1 && data.total_active != null) h1.textContent = data.total_active.toLocaleString();
+    if (h2 && data.recent_week != null) h2.textContent = data.recent_week.toLocaleString();
   } catch (e) {
     console.warn("stats取得失敗:", e);
   }
