@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>公募ナビAI - 公募・入札案件をAIが毎日自動で見つける</title>
   <meta name="description" content="行政の公募・入札案件を、AIが毎日自動でチェック。貴社の事業にマッチする案件だけをメールでお届けします。">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=3.1">
   <!-- Supabase JS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
@@ -522,7 +522,7 @@
 
       <!-- Tab Navigation -->
       <div class="dashboard__tabs">
-        <button class="tab active" data-tab="opportunities" onclick="switchTab('opportunities')">案件一覧</button>
+        <button class="tab active" data-tab="opportunities" onclick="switchTab('opportunities')">マッチング案件</button>
         <button class="tab" data-tab="settings" onclick="switchTab('settings')">設定</button>
         <button class="tab" data-tab="subscription" onclick="switchTab('subscription')">プラン</button>
       </div>
@@ -643,6 +643,6 @@
     </div>
   </footer>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=3.1"></script>
 </body>
 </html>
