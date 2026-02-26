@@ -443,11 +443,16 @@ async function handleGetOpportunities(request, env) {
   const oppResult = await supabaseRequest(queryPath, "GET", null, env);
   if (!oppResult.ok) return errorResponse("案件取得失敗", 500);
 
-  // 期限切れの案件を除外
+  // 無効な案件を除外
   const today = new Date().toISOString().split("T")[0];
+  const BAD_URLS = ["/pps-web-biz/UAA01/OAA0101", "/all.html"];
   const allOpps = (oppResult.data || []).filter(opp => {
-    if (!opp.deadline) return true;
-    return opp.deadline >= today;
+    // 期限切れ除外
+    if (opp.deadline && opp.deadline < today) return false;
+    // 詳細URLなし or 壊れたURL → 非表示
+    if (!opp.detail_url) return false;
+    if (BAD_URLS.some(p => opp.detail_url.includes(p))) return false;
+    return true;
   });
 
   // 3. user_opportunities からキャッシュ情報を取得

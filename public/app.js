@@ -724,11 +724,7 @@ function renderOpportunities(items) {
     const summaryText = opp.detailed_summary || opp.summary || "";
     const industryCategory = opp.industry_category || "";
 
-    // 壊れたURL（検索トップページ・一覧ページ）を除外
     const detailUrl = opp.detail_url || "";
-    const isBadUrl = !detailUrl
-      || detailUrl.includes("/pps-web-biz/UAA01/OAA0101")
-      || detailUrl.endsWith("/all.html");
 
     return `
       <div class="opp-card ${isBlurred ? 'opp-card--blurred' : ''}" id="opp-${escapeHtml(oppId)}">
@@ -747,7 +743,7 @@ function renderOpportunities(items) {
           ${industryCategory ? `<span class="opp-card__industry">${escapeHtml(industryCategory)}</span>` : ""}
           ${summaryText ? `<div class="opp-card__summary">${escapeHtml(summaryText)}</div>` : ""}
           ${!isBlurred ? `<div class="opp-card__actions">
-            ${!isBadUrl ? `<a href="${escapeHtml(detailUrl)}" target="_blank" class="btn btn--outline btn--sm">詳細を見る</a>` : ""}
+            ${detailUrl ? `<a href="${escapeHtml(detailUrl)}" target="_blank" class="btn btn--outline btn--sm">詳細を見る</a>` : ""}
             <button class="btn btn--primary btn--sm" onclick="analyzeOpportunity('${escapeHtml(oppId)}')">AI詳細分析</button>
           </div>
           <div class="opp-card__analysis hidden" id="analysis-${escapeHtml(oppId)}"></div>` : ""}
