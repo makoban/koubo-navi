@@ -31,9 +31,13 @@ def run_daily_check():
     }
 
     try:
-        # バッチログ開始
-        log_id = db.create_batch_log()
-        logger.info("=== バッチ開始 (log_id=%s) ===", log_id)
+        # バッチログ開始（失敗してもバッチ処理は継続）
+        try:
+            log_id = db.create_batch_log()
+            logger.info("=== バッチ開始 (log_id=%s) ===", log_id)
+        except Exception as log_exc:
+            logger.warning("バッチログ作成失敗（処理は継続）: %s", log_exc)
+            log_id = None
 
         # =====================================================
         # Phase 1: 全ソースをスクレイピング（ユーザー有無に関係なく）
