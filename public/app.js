@@ -586,6 +586,23 @@ async function registerAndGoToPayment() {
   }
 }
 
+function selectOnboardingPlan(plan) {
+  selectedPlan = plan;
+  const mEl = document.getElementById("planOptMonthly");
+  const yEl = document.getElementById("planOptYearly");
+  if (plan === "yearly") {
+    yEl.style.border = "2px solid var(--accent)";
+    yEl.style.background = "rgba(201,169,110,0.08)";
+    mEl.style.border = "2px solid rgba(255,255,255,0.15)";
+    mEl.style.background = "transparent";
+  } else {
+    mEl.style.border = "2px solid var(--accent)";
+    mEl.style.background = "rgba(201,169,110,0.08)";
+    yEl.style.border = "2px solid rgba(255,255,255,0.15)";
+    yEl.style.background = "transparent";
+  }
+}
+
 async function startTrialCheckout() {
   const btn = document.getElementById("startTrialBtn");
   btn.disabled = true;
@@ -600,7 +617,7 @@ async function startTrialCheckout() {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        plan: "monthly",
+        plan: selectedPlan || "monthly",
         success_url: window.location.origin + window.location.pathname + "?session_id={CHECKOUT_SESSION_ID}",
         cancel_url: window.location.origin + window.location.pathname,
       }),
@@ -1177,15 +1194,19 @@ function renderSubscription(data) {
         <div class="sub-card__plan">${status === "trial" ? "無料トライアル中" : "無料プラン"}</div>
         ${trialEnd ? `<div class="sub-card__info">トライアル終了日: ${new Date(trialEnd).toLocaleDateString("ja-JP")}</div>` : ""}
         <p class="sub-card__desc">無料プラン: 案件一覧は閲覧可・詳細とAI分析は有料プラン限定</p>
-        <button class="btn btn--primary btn--lg" onclick="startCheckout('monthly')">月額プラン ¥3,980 で開始</button>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:16px;">
+          <button class="btn btn--primary btn--lg" onclick="startCheckout('monthly')">月額 ¥3,980 で開始</button>
+          <button class="btn btn--primary btn--lg" style="background:linear-gradient(135deg,#c9a96e,#b8963d);" onclick="startCheckout('yearly')">年額 ¥39,800 で開始<br><small style="font-size:11px;opacity:0.9;">2ヶ月分お得</small></button>
+        </div>
         ${status === "trial" ? `<button class="btn btn--danger" style="margin-top:12px" onclick="cancelSubscription()">解約する</button>` : ""}
       </div>
     `;
     return;
   }
 
-  const planLabel = "月額プラン";
-  const priceLabel = "¥3,980/月";
+  const isYearly = sub.plan === "yearly" || (sub.amount && sub.amount >= 30000);
+  const planLabel = isYearly ? "年額プラン" : "月額プラン";
+  const priceLabel = isYearly ? "¥39,800/年" : "¥3,980/月";
   const statusLabel = sub.status === "active" ? "有効" :
     sub.status === "cancelling" ? "解約予定" :
     sub.status === "past_due" ? "支払い遅延" : sub.status;

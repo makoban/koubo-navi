@@ -712,7 +712,7 @@ body {
   display: flex;
   justify-content: center;
   gap: 24px;
-  max-width: 720px;
+  max-width: 860px;
   margin: 20px auto 0;
 }
 .pricing__card {
@@ -732,6 +732,24 @@ body {
 .pricing__card--yearly {
   border-color: var(--accent);
   box-shadow: 0 4px 24px rgba(201, 169, 110, 0.12);
+}
+.pricing__badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #c9a96e, #b8963d);
+  color: #0a0a0a;
+  padding: 4px 18px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pricing__savings {
+  font-size: 13px;
+  color: var(--accent);
+  margin: -16px 0 24px;
 }
 .pricing__ribbon {
   position: absolute;

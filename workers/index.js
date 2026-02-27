@@ -811,7 +811,7 @@ async function handleCheckout(request, env) {
   try { body = await request.json(); } catch { return errorResponse("不正なJSON", 400); }
 
   const { plan, success_url, cancel_url } = body;
-  const priceId = env.STRIPE_PRICE_MONTHLY;
+  const priceId = plan === "yearly" ? env.STRIPE_PRICE_YEARLY : env.STRIPE_PRICE_MONTHLY;
   if (!priceId) return errorResponse("Price IDが設定されていません", 500);
 
   const origin = request.headers.get("Origin") ?? "https://koubo-navi.bantex.jp";

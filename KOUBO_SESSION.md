@@ -9,7 +9,7 @@
 - **本番URL**: https://koubo-navi.bantex.jp/
 - **Worker URL**: https://koubo-navi-proxy.ai-fudosan.workers.dev
 - **GitHub**: https://github.com/makoban/koubo-navi (branch: master)
-- **現在のバージョン**: v2.7
+- **現在のバージョン**: v3.2
 - **スクリーンショット保存場所**: C:\Users\banma\Pictures\Screenshots
 
 ## 技術構成
@@ -164,3 +164,17 @@ koubo-navi/
 5. README.md 作成（クイックスタート・アーキテクチャ・ディレクトリ構成）
 6. 市場調査/docs/KOUBO_NAVI_SPEC.md 作成（仕様概要）
 7. バージョン v2.0 → v2.7 への更新を反映（複数のバグ修正・機能改善がコミット済み）
+
+### 2026-02-27 | v3.2 実装・デプロイ
+
+**完了した作業**:
+1. 期限切れ案件の非表示フィルター強化（deadline NULL + 30日超 → 除外）
+2. GET /api/stats 公開API追加（認証不要・LP用リアルタイム案件数）
+3. 案件一覧ソート機能追加（締切近い順/新着順/etc）
+4. 無料/有料ティア再設計（一覧全件表示・詳細ロック・AI分析403ガード）
+5. Worker デプロイ完了 (Version: d5bca50b)
+6. GitHub push完了 (commit: f235548)
+7. /api/stats 動作確認OK（recent_week: 38999, total_active: 38999）
+
+**バージョン**: v3.1 → v3.2（3箇所同時更新済み）
+**変更ファイル**: workers/index.js, public/index.html, public/app.js, public/style.css
