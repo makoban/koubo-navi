@@ -7,7 +7,7 @@ compatibility_date = "2024-09-25"
 # --------------------------------------------------------------------------
 [vars]
 SUPABASE_URL = "https://ypyrjsdotkeyvzequdez.supabase.co"
-STRIPE_PRICE_MONTHLY = "price_1T4iDF1TYnppSLqNH40cBF7y"   # 本番 ¥2,980/月
+STRIPE_PRICE_MONTHLY = "price_1T2uG51TYnppSLqNpDTETGU1"   # 本番 ¥3,980/月
 
 # --------------------------------------------------------------------------
 # シークレット（wrangler secret put で設定）
