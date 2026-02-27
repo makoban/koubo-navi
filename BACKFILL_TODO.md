@@ -69,12 +69,12 @@ detailed_summary, difficulty, industry_category
 `公募ナビ/batch/.env`（または `公募ナビ/.env`）に以下を設定：
 
 ```env
-GEMINI_API_KEY=AIzaSyBwaqvnAWtCBGpv0k4QSfF77RSxdZ2XubQ
+GEMINI_API_KEY=（Google Cloud Consoleで取得）
 SUPABASE_URL=https://ypyrjsdotkeyvzequdez.supabase.co
 SUPABASE_SERVICE_KEY=（INFRASTRUCTURE.mdまたはWorker secretsで確認）
 ```
 
-> SUPABASE_SERVICE_KEY は `docs/INFRASTRUCTURE.md` の Secret Key（`sb_secret_lVjCeEoWmOph25CqFtI3gg_mu3oLdov`）を使用
+> SUPABASE_SERVICE_KEY は `docs/INFRASTRUCTURE.md` の Secret Key を使用
 
 ### 4-2. 実行コマンド
 
@@ -136,8 +136,8 @@ SELECT COUNT(*) FROM opportunities WHERE detail_fetched_at IS NULL;
 Supabase REST APIで確認する場合：
 ```bash
 curl -s "https://ypyrjsdotkeyvzequdez.supabase.co/rest/v1/opportunities?select=id&detail_fetched_at=not.is.null&limit=1" \
-  -H "apikey: sb_secret_lVjCeEoWmOph25CqFtI3gg_mu3oLdov" \
-  -H "Authorization: Bearer sb_secret_lVjCeEoWmOph25CqFtI3gg_mu3oLdov" \
+  -H "apikey: $SUPABASE_SERVICE_KEY" \
+  -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
   -H "Prefer: count=exact" -I 2>&1 | grep Content-Range
 ```
 

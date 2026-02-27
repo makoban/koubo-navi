@@ -1,8 +1,9 @@
 """Run SQL migration against Supabase Management API."""
+import os
 import requests
 import sys
 
-ACCESS_TOKEN = "sbp_7fbfb65d1fd7f54581a1490e3d569d2299e75737"
+ACCESS_TOKEN = os.environ.get("SUPABASE_ACCESS_TOKEN", "")
 PROJECT_REF = "ypyrjsdotkeyvzequdez"
 URL = f"https://api.supabase.com/v1/projects/{PROJECT_REF}/database/query"
 HEADERS = {
