@@ -34,30 +34,30 @@
     <!-- Hero -->
     <section class="hero">
       <div class="hero__content">
-        <div class="hero__stats-banner">
-          <span class="hero__stats-item">いま <strong id="heroTotalActive">--</strong> 件の公募・入札案件が募集中</span>
-          <span class="hero__stats-divider"></span>
-          <span class="hero__stats-item">今週 <strong id="heroRecentWeek">--</strong> 件の新着</span>
-        </div>
-        <div class="hero__price-badge">
-          <span class="hero__price-badge-label">他社比 最大1/21の価格</span>
-          <span class="hero__price-badge-amount">月額 <strong>2,980</strong>円</span>
+        <div class="hero__live-counter">
+          <span class="hero__live-dot"></span>
+          <span>AIが <strong id="heroTotalChecked">--</strong> 件をチェック済み &mdash; いま <strong id="heroTotalActive">--</strong> 件が募集中</span>
         </div>
         <h1 class="hero__title">
-          貴社にマッチする<br>
-          <span class="hero__title-accent">公募・入札案件</span>を<br>
-          AIが毎日、自動で見つける。
+          <span class="hero__title-accent">月額3,980円</span>で<br>
+          全国の公募・入札を<br>
+          AIが毎日チェック。
         </h1>
         <p class="hero__subtitle">
-          URLか事業内容を入力するだけ。設定は3分。<br>
-          AIが事業内容を読み取り、全国の行政案件から<br>
-          最適な公募・入札情報を毎朝メールでお届けします。
+          業界最安クラスなのに、AI搭載。<br>
+          URLか事業内容を入力するだけで、<br>
+          貴社にマッチする案件を毎朝メールでお届けします。
         </p>
+        <div class="hero__usp">
+          <span class="hero__usp-item">&#x2713; 他社比 最大1/20の価格</span>
+          <span class="hero__usp-item">&#x2713; AI自動マッチング</span>
+          <span class="hero__usp-item">&#x2713; 設定3分・自動配信</span>
+        </div>
         <div class="hero__actions">
           <button class="btn btn--primary btn--lg" onclick="startOnboarding()">無料で始める（7日間）</button>
           <a href="#service-sample" class="btn btn--outline btn--lg">サンプルを見る</a>
         </div>
-        <p class="hero__note">7日間無料トライアル / 途中解約可 / 設定3分</p>
+        <p class="hero__note">7日間無料トライアル / 途中解約可 / クレカ不要</p>
       </div>
     </section>
 
@@ -217,7 +217,7 @@
           <tbody>
             <tr>
               <td class="competitor__label">月額料金</td>
-              <td class="competitor__self"><strong>&#165;2,980</strong></td>
+              <td class="competitor__self"><strong>&#165;3,980</strong></td>
               <td>&#165;64,000〜</td>
               <td>&#165;22,000</td>
               <td>&#165;8,709〜</td>
@@ -325,7 +325,7 @@
       <div class="pricing__grid">
         <div class="pricing__card">
           <h3>月額プラン</h3>
-          <div class="pricing__price"><span class="pricing__yen">&#165;</span>2,980<span class="pricing__period">/月</span></div>
+          <div class="pricing__price"><span class="pricing__yen">&#165;</span>3,980<span class="pricing__period">/月</span></div>
           <ul class="pricing__features">
             <li>7日間無料トライアル</li>
             <li>全国47都道府県対応（最大3エリア）</li>
@@ -371,7 +371,7 @@
         </details>
         <details class="faq__item">
           <summary>無料プランと有料プランの違いは？</summary>
-          <p>無料プランでは上位5件の案件を表示し、残り30件はぼかし表示でご覧いただけます。有料プラン（月額¥2,980）にアップグレードすると、全案件のスコア・詳細が確認でき、AI詳細分析レポートもご利用いただけます。</p>
+          <p>無料プランでは上位5件の案件を表示し、残り30件はぼかし表示でご覧いただけます。有料プラン（月額¥3,980）にアップグレードすると、全案件のスコア・詳細が確認でき、AI詳細分析レポートもご利用いただけます。</p>
         </details>
       </div>
     </section>
@@ -465,14 +465,14 @@
         <div class="trial-info">
           <div class="trial-info__highlight">7日間無料でお試しいただけます</div>
           <p>トライアル開始にはクレジットカードの登録が必要です。7日間は課金されません。</p>
-          <p>トライアル終了後、月額 &#165;2,980 の自動課金が開始されます。</p>
+          <p>トライアル終了後、月額 &#165;3,980 の自動課金が開始されます。</p>
           <p class="trial-info__note">途中解約はいつでも可能です。解約はマイページからワンクリックで完了します。</p>
           <p class="trial-info__note">無料プランでも5件の案件 + 30件のぼかし表示をご覧いただけます。</p>
         </div>
 
         <div class="onboarding__actions">
           <button class="btn btn--outline" onclick="goOnboardingStep(2)">戻る</button>
-          <button class="btn btn--primary btn--lg" id="startTrialBtn" onclick="startTrialCheckout()">トライアルを開始する（月額 &#165;2,980）</button>
+          <button class="btn btn--primary btn--lg" id="startTrialBtn" onclick="startTrialCheckout()">トライアルを開始する（月額 &#165;3,980）</button>
         </div>
       </div>
     </div>

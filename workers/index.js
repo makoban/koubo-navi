@@ -546,9 +546,9 @@ async function handleGetStats(request, env) {
   );
   const recentCount = parseInt(recentResp.headers.get("Content-Range")?.split("/")[1] || "0");
 
-  // 有効な案件総数
-  const totalResp = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/opportunities?or=(deadline.gte.${today},and(deadline.is.null,scraped_at.gte.${thirtyDaysAgo}))&select=id&limit=0`,
+  // 有効な案件総数（deadline >= today のみ = 確実に募集中）
+  const activeResp = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/opportunities?deadline=gte.${today}&detail_url=not.is.null&select=id&limit=0`,
     {
       method: "GET",
       headers: {
@@ -558,11 +558,26 @@ async function handleGetStats(request, env) {
       },
     }
   );
-  const totalCount = parseInt(totalResp.headers.get("Content-Range")?.split("/")[1] || "0");
+  const activeCount = parseInt(activeResp.headers.get("Content-Range")?.split("/")[1] || "0");
+
+  // 全チェック済み案件数（DB総件数）
+  const totalResp = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/opportunities?select=id&limit=0`,
+    {
+      method: "GET",
+      headers: {
+        "apikey": env.SUPABASE_SERVICE_KEY,
+        "Authorization": `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        "Prefer": "count=exact",
+      },
+    }
+  );
+  const totalChecked = parseInt(totalResp.headers.get("Content-Range")?.split("/")[1] || "0");
 
   return jsonResponse({
     recent_week: recentCount,
-    total_active: totalCount,
+    total_active: activeCount,
+    total_checked: totalChecked,
     updated_at: new Date().toISOString(),
   });
 }

@@ -62,9 +62,9 @@ async function loadLandingStats() {
     if (el2 && data.total_active != null) el2.textContent = data.total_active.toLocaleString() + "件";
     // Hero banner
     const h1 = document.getElementById("heroTotalActive");
-    const h2 = document.getElementById("heroRecentWeek");
+    const h2 = document.getElementById("heroTotalChecked");
     if (h1 && data.total_active != null) h1.textContent = data.total_active.toLocaleString();
-    if (h2 && data.recent_week != null) h2.textContent = data.recent_week.toLocaleString();
+    if (h2 && data.total_checked != null) h2.textContent = data.total_checked.toLocaleString();
   } catch (e) {
     console.warn("stats取得失敗:", e);
   }
