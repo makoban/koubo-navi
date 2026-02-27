@@ -825,7 +825,7 @@ async function handleCheckout(request, env) {
   params.set("success_url", successUrl);
   params.set("cancel_url", cancelUrl);
   params.set("metadata[user_id]", user_id);
-  params.set("metadata[plan]", plan || "monthly");
+  params.set("metadata[plan]", "monthly");
   params.set("subscription_data[trial_period_days]", "7");
   params.set("locale", "ja");
   params.set("payment_method_types[0]", "card");
