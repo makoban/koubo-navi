@@ -336,19 +336,6 @@
           </ul>
           <button class="btn btn--primary btn--lg" onclick="startOnboarding()">無料で始める</button>
         </div>
-        <div class="pricing__card pricing__card--yearly">
-          <span class="pricing__badge">2ヶ月分お得</span>
-          <h3>年額プラン</h3>
-          <div class="pricing__price"><span class="pricing__yen">&#165;</span>39,800<span class="pricing__period">/年</span></div>
-          <p class="pricing__savings">月あたり約 &#165;3,317 &mdash; 年間 &#165;7,960 お得</p>
-          <ul class="pricing__features">
-            <li>7日間無料トライアル</li>
-            <li>月額プランの全機能</li>
-            <li>年間一括払いで2ヶ月分お得</li>
-            <li>いつでも解約可能</li>
-          </ul>
-          <button class="btn btn--primary btn--lg" onclick="startOnboarding('yearly')">年額プランで始める</button>
-        </div>
       </div>
     </section>
 
@@ -472,29 +459,18 @@
 
       <!-- Step 3: Payment -->
       <div class="onboarding__panel hidden" id="obStep3">
-        <h2>プランを選択してトライアル開始</h2>
+        <h2>トライアルを開始</h2>
 
         <div class="trial-info">
           <div class="trial-info__highlight">7日間無料でお試しいただけます</div>
-          <p>トライアル開始にはクレジットカードの登録が必要です。7日間は課金されません。いつでもキャンセル可能。</p>
-        </div>
-
-        <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin:24px 0;">
-          <label class="plan-option plan-option--selected" id="planOptMonthly" onclick="selectOnboardingPlan('monthly')" style="cursor:pointer;border:2px solid var(--accent);border-radius:12px;padding:20px 24px;text-align:center;min-width:180px;background:rgba(201,169,110,0.08);">
-            <div style="font-weight:700;font-size:18px;">月額プラン</div>
-            <div style="font-size:24px;font-weight:800;margin:8px 0;">&#165;3,980<span style="font-size:14px;font-weight:400;">/月</span></div>
-          </label>
-          <label class="plan-option" id="planOptYearly" onclick="selectOnboardingPlan('yearly')" style="cursor:pointer;border:2px solid rgba(255,255,255,0.15);border-radius:12px;padding:20px 24px;text-align:center;min-width:180px;position:relative;">
-            <span style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#c9a96e,#b8963d);color:#0a0a0a;padding:2px 14px;border-radius:12px;font-size:11px;font-weight:700;white-space:nowrap;">2ヶ月分お得</span>
-            <div style="font-weight:700;font-size:18px;">年額プラン</div>
-            <div style="font-size:24px;font-weight:800;margin:8px 0;">&#165;39,800<span style="font-size:14px;font-weight:400;">/年</span></div>
-            <div style="font-size:12px;color:var(--accent);">月あたり約 &#165;3,317</div>
-          </label>
+          <p>トライアル開始にはクレジットカードの登録が必要です。7日間は課金されません。</p>
+          <p>トライアル終了後、月額 &#165;3,980 の自動課金が開始されます。</p>
+          <p class="trial-info__note">途中解約はいつでも可能です。解約はマイページからワンクリックで完了します。</p>
         </div>
 
         <div class="onboarding__actions">
           <button class="btn btn--outline" onclick="goOnboardingStep(2)">戻る</button>
-          <button class="btn btn--primary btn--lg" id="startTrialBtn" onclick="startTrialCheckout()">トライアルを開始する</button>
+          <button class="btn btn--primary btn--lg" id="startTrialBtn" onclick="startTrialCheckout()">トライアルを開始する（月額 &#165;3,980）</button>
         </div>
       </div>
     </div>
