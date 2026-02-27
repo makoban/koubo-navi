@@ -1176,8 +1176,8 @@ function renderSubscription(data) {
       <div class="sub-card">
         <div class="sub-card__plan">${status === "trial" ? "無料トライアル中" : "無料プラン"}</div>
         ${trialEnd ? `<div class="sub-card__info">トライアル終了日: ${new Date(trialEnd).toLocaleDateString("ja-JP")}</div>` : ""}
-        <p class="sub-card__desc">無料プラン: 上位5件表示 + 30件ぼかし表示</p>
-        <button class="btn btn--primary btn--lg" onclick="startCheckout('monthly')">月額プラン ¥2,980 で開始</button>
+        <p class="sub-card__desc">無料プラン: 案件一覧は閲覧可・詳細とAI分析は有料プラン限定</p>
+        <button class="btn btn--primary btn--lg" onclick="startCheckout('monthly')">月額プラン ¥3,980 で開始</button>
         ${status === "trial" ? `<button class="btn btn--danger" style="margin-top:12px" onclick="cancelSubscription()">解約する</button>` : ""}
       </div>
     `;
@@ -1185,7 +1185,7 @@ function renderSubscription(data) {
   }
 
   const planLabel = "月額プラン";
-  const priceLabel = "¥2,980/月";
+  const priceLabel = "¥3,980/月";
   const statusLabel = sub.status === "active" ? "有効" :
     sub.status === "cancelling" ? "解約予定" :
     sub.status === "past_due" ? "支払い遅延" : sub.status;
