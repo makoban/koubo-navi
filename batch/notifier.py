@@ -32,9 +32,12 @@ def notify_user(user: dict) -> int:
         return 0
 
     # 業種マッチの新着案件を取得（過去24時間）
+    logger.info("業種マッチ検索: user=%s, cats=%s", user_id, industry_cats)
     new_opps = db.get_new_opportunities_by_industry(industry_cats, since_hours=24)
     if not new_opps:
+        logger.info("新着マッチ案件なし: user=%s", user_id)
         return 0
+    logger.info("新着マッチ案件: %d件 (user=%s)", len(new_opps), user_id)
 
     # ティア判定
     tier = db.get_user_tier(user)
@@ -68,8 +71,10 @@ def notify_user(user: dict) -> int:
 
     if success:
         _log_notification(user_id, len(analyzed_opps), "sent")
+        logger.info("通知完了: user=%s, %d件送信", user_id, len(analyzed_opps))
     else:
         _log_notification(user_id, len(analyzed_opps), "failed")
+        logger.error("通知失敗: user=%s, %d件のメール送信に失敗", user_id, len(analyzed_opps))
 
     return len(analyzed_opps) if success else 0
 
@@ -144,8 +149,10 @@ def _send_notification(
                 "subject": subject,
                 "html": html_body,
             },
-            timeout=15,
+            timeout=30,
         )
+        if not resp.ok:
+            logger.error("Resend API エラー: status=%d body=%s", resp.status_code, resp.text[:500])
         resp.raise_for_status()
         logger.info("メール送信成功: %s (%d件)", email, len(analyzed_opps))
         return True
