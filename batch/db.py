@@ -128,7 +128,7 @@ def get_opportunities_by_areas(
     """指定エリアの直近N日分の案件を取得。"""
     from datetime import timedelta
 
-    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat().replace("+00:00", "Z")
     area_filter = ",".join(f"area_id.eq.{a}" for a in area_ids)
     resp = requests.get(
         _url(
@@ -239,7 +239,8 @@ def get_new_opportunities_by_industry(
     """業種カテゴリにマッチする新着案件を取得する。"""
     from datetime import timedelta
 
-    since = (datetime.now(timezone.utc) - timedelta(hours=since_hours)).isoformat()
+    # isoformat() の "+00:00" はURLクエリで "+" がスペースに変換されるため "Z" に置換
+    since = (datetime.now(timezone.utc) - timedelta(hours=since_hours)).isoformat().replace("+00:00", "Z")
     cat_filter = ",".join(industry_categories)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
