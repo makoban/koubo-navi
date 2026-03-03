@@ -503,6 +503,17 @@ body {
   letter-spacing: 0.02em;
 }
 .step-card p { color: var(--text-secondary); font-size: 14px; line-height: 1.8; }
+.step-card__note {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--accent-light);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+.step-card__note strong { color: var(--accent); }
 
 /* ====== Comparison ====== */
 .comparison {
@@ -825,6 +836,92 @@ body {
   letter-spacing: 0.02em;
 }
 .cta p { color: var(--text-secondary); margin-bottom: 28px; font-size: 15px; }
+
+/* ====== LINE Support Section ====== */
+.line-support {
+  padding: 60px 24px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+}
+.line-support__inner {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: linear-gradient(135deg, rgba(6,199,85,0.08), rgba(6,199,85,0.02));
+  border: 1px solid rgba(6,199,85,0.2);
+  border-radius: 16px;
+  padding: 32px;
+}
+.line-support__icon {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  background: rgba(6,199,85,0.12);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.line-support__text { flex: 1; }
+.line-support__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.line-support__desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+.btn--line {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #06C755;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.btn--line:hover { background: #05a748; }
+
+/* Floating LINE button */
+.line-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  background: #06C755;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(6,199,85,0.4);
+  z-index: 1000;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.line-fab:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 24px rgba(6,199,85,0.5);
+}
+
+@media (max-width: 640px) {
+  .line-support__inner {
+    flex-direction: column;
+    text-align: center;
+    padding: 24px;
+  }
+  .line-fab { bottom: 16px; right: 16px; width: 48px; height: 48px; }
+  .line-fab svg { width: 24px; height: 24px; }
+}
 
 /* ====== Onboarding ====== */
 .onboarding {

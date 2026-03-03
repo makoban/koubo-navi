@@ -163,6 +163,7 @@
           <div class="step-card__icon">&#x1F4E9;</div>
           <h3>毎朝メールで通知</h3>
           <p>マッチする案件が見つかったら毎朝8時にメールで通知。気になる案件はワンクリックでAI詳細分析レポートを確認できます。</p>
+          <p class="step-card__note">※ 送信元: <strong>noreply@bantex.jp</strong><br>迷惑メールに振り分けられないよう、受信許可設定をお願いします。</p>
         </div>
       </div>
     </section>
@@ -365,6 +366,10 @@
           <p>はい。マイページからいつでも解約できます。解約後も契約期間の終了まではサービスをご利用いただけます。</p>
         </details>
         <details class="faq__item">
+          <summary>メールが届きません。どうすればいいですか？</summary>
+          <p>通知メールは <strong>noreply@bantex.jp</strong> から送信されます。迷惑メールフォルダに振り分けられている場合がありますので、ご確認ください。届かない場合は、メールソフトやキャリアの受信設定で <strong>bantex.jp</strong> ドメインを受信許可に追加してください。設定方法がわからない場合は、<a href="https://lin.ee/5b8JT4C" target="_blank" rel="noopener">LINEサポート</a>までお問い合わせください。</p>
+        </details>
+        <details class="faq__item">
           <summary>エリアは何個まで選べますか？</summary>
           <p>最大3エリアまで選択できます。AIが各エリアの行政サイトを毎日チェックし、マッチする案件をお届けします。エリアの変更はいつでもマイページから可能です。</p>
         </details>
@@ -380,6 +385,23 @@
       <h2>まずは7日間、無料でお試しください</h2>
       <p>URLか事業内容を入力するだけ。設定は3分で完了します。</p>
       <button class="btn btn--primary btn--lg" onclick="startOnboarding()">無料で始める</button>
+    </section>
+
+    <!-- LINE Support -->
+    <section class="line-support">
+      <div class="line-support__inner">
+        <div class="line-support__icon">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="#06C755"><path d="M12 2C6.48 2 2 5.83 2 10.5c0 4.08 3.42 7.5 8.05 8.32.31.07.74.21.85.48.1.25.06.63.03.88l-.14.82c-.04.25-.2.97.85.53s5.61-3.3 7.66-5.65C21.13 13.87 22 12.25 22 10.5 22 5.83 17.52 2 12 2zm-3.08 11.13H6.58c-.29 0-.52-.24-.52-.52V8.72c0-.29.24-.52.52-.52s.52.24.52.52v3.37h1.82c.29 0 .52.24.52.52s-.24.52-.52.52zm1.62-.52c0 .29-.24.52-.52.52s-.52-.24-.52-.52V8.72c0-.29.24-.52.52-.52s.52.24.52.52v3.89zm4.56 0a.52.52 0 0 1-.42.21.52.52 0 0 1-.42-.21l-2.52-3.42v3.42c0 .29-.24.52-.52.52s-.52-.24-.52-.52V8.72c0-.22.14-.42.34-.49a.52.52 0 0 1 .6.18l2.52 3.42V8.72c0-.29.24-.52.52-.52s.52.24.52.52v3.89zm2.94-2.34c.29 0 .52.24.52.52s-.24.52-.52.52h-1.82v1.3h1.82c.29 0 .52.24.52.52s-.24.52-.52.52h-2.34c-.29 0-.52-.24-.52-.52V8.72c0-.29.24-.52.52-.52h2.34c.29 0 .52.24.52.52s-.24.52-.52.52h-1.82v1.3h1.82z"/></svg>
+        </div>
+        <div class="line-support__text">
+          <p class="line-support__title">ご不明な点はLINEでお気軽にどうぞ</p>
+          <p class="line-support__desc">操作方法・料金・導入のご相談など、なんでもお問い合わせください。</p>
+        </div>
+        <a href="https://lin.ee/5b8JT4C" target="_blank" rel="noopener" class="btn btn--line">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.48 2 2 5.83 2 10.5c0 4.08 3.42 7.5 8.05 8.32.31.07.74.21.85.48.1.25.06.63.03.88l-.14.82c-.04.25-.2.97.85.53s5.61-3.3 7.66-5.65C21.13 13.87 22 12.25 22 10.5 22 5.83 17.52 2 12 2z"/></svg>
+          LINEで相談する
+        </a>
+      </div>
     </section>
   </main>
 
@@ -629,9 +651,15 @@
         <a href="https://bantex.jp/terms.html" target="_blank">利用規約</a>
         <a href="https://bantex.jp/privacy.html" target="_blank">プライバシーポリシー</a>
         <a href="https://bantex.jp/tokushoho.html" target="_blank">特定商取引法</a>
+        <a href="https://lin.ee/5b8JT4C" target="_blank" rel="noopener">LINEサポート</a>
       </div>
     </div>
   </footer>
+
+  <!-- Floating LINE Button -->
+  <a href="https://lin.ee/5b8JT4C" target="_blank" rel="noopener" class="line-fab" aria-label="LINEで問い合わせ">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.48 2 2 5.83 2 10.5c0 4.08 3.42 7.5 8.05 8.32.31.07.74.21.85.48.1.25.06.63.03.88l-.14.82c-.04.25-.2.97.85.53s5.61-3.3 7.66-5.65C21.13 13.87 22 12.25 22 10.5 22 5.83 17.52 2 12 2z"/></svg>
+  </a>
 
   <script src="app.js?v=3.2"></script>
 </body>
