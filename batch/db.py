@@ -235,6 +235,7 @@ def update_industry_category(opp_id: str, category: str):
 def get_new_opportunities_by_industry(
     industry_categories: list[str],
     since_hours: int = 24,
+    area_ids: list[str] | None = None,
 ) -> list[dict]:
     """業種カテゴリにマッチする新着案件を取得する。"""
     from datetime import timedelta
@@ -244,13 +245,18 @@ def get_new_opportunities_by_industry(
     cat_filter = ",".join(industry_categories)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
+    query = (
+        f"/opportunities?industry_category=in.({cat_filter})"
+        f"&scraped_at=gte.{since}"
+        f"&or=(deadline.is.null,deadline.gte.{today})"
+        "&select=*&order=scraped_at.desc&limit=100"
+    )
+    if area_ids:
+        area_filter = ",".join(area_ids)
+        query += f"&area_id=in.({area_filter})"
+
     resp = requests.get(
-        _url(
-            f"/opportunities?industry_category=in.({cat_filter})"
-            f"&scraped_at=gte.{since}"
-            f"&or=(deadline.is.null,deadline.gte.{today})"
-            "&select=*&order=scraped_at.desc&limit=100"
-        ),
+        _url(query),
         headers=_headers(),
         timeout=30,
     )

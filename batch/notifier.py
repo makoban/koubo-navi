@@ -31,9 +31,12 @@ def notify_user(user: dict) -> int:
         logger.info("業種カテゴリ未設定: %s", user_id)
         return 0
 
-    # 業種マッチの新着案件を取得（過去24時間）
-    logger.info("業種マッチ検索: user=%s, cats=%s", user_id, industry_cats)
-    new_opps = db.get_new_opportunities_by_industry(industry_cats, since_hours=24)
+    # ユーザーのエリアを取得
+    user_areas = db.get_user_areas(user_id)
+
+    # 業種マッチの新着案件を取得（過去24時間、エリア絞り込み）
+    logger.info("業種マッチ検索: user=%s, cats=%s, areas=%s", user_id, industry_cats, user_areas)
+    new_opps = db.get_new_opportunities_by_industry(industry_cats, since_hours=24, area_ids=user_areas or None)
     if not new_opps:
         logger.info("新着マッチ案件なし: user=%s", user_id)
         return 0
