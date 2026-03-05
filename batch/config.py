@@ -21,6 +21,9 @@ SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 FROM_EMAIL = os.environ.get("FROM_EMAIL", "公募ナビAI <noreply@bantex.jp>")
 
+# --- Slack ---
+SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL", "")
+
 # --- Scraping ---
 REQUEST_TIMEOUT = 30
 USER_AGENT = "KouboNavi/1.0 (bantex.jp; AI procurement matching)"

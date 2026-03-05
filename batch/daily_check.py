@@ -14,6 +14,7 @@ import db
 from detail_scraper import enrich_batch
 from gov_scraper import scrape_source
 from notifier import notify_user
+from slack_notify import notify_slack, notify_slack_health
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,10 @@ def run_daily_check():
                         "source_id": source_id,
                         "error": str(exc),
                     })
+                    notify_slack(
+                        f"スクレイピング失敗: {source.get('name', source_id)}",
+                        f"source_id: {source_id}\narea_id: {area_id}\n{str(exc)[:500]}",
+                    )
 
         logger.info("スクレイピング完了: 合計 %d件", stats["opportunities_scraped"])
 
@@ -105,6 +110,7 @@ def run_daily_check():
                 "phase": "detail_enrich",
                 "error": str(exc),
             })
+            notify_slack("詳細取得フェーズ失敗", str(exc)[:500])
 
         # =====================================================
         # Phase 2: ユーザーごとに業種マッチ通知
@@ -135,6 +141,10 @@ def run_daily_check():
                     "error": str(exc),
                 })
                 stats["users_processed"] += 1
+                notify_slack(
+                    f"メール通知失敗: {user.get('notification_email', user['id'])}",
+                    str(exc)[:500],
+                )
 
         # 完了
         status = "completed" if stats["errors_count"] == 0 else "completed_with_errors"
@@ -157,10 +167,71 @@ def run_daily_check():
             "error": str(exc),
             "traceback": traceback.format_exc(),
         })
+        notify_slack("バッチ致命的エラー", f"{str(exc)}\n{traceback.format_exc()[:800]}")
         if log_id:
             _finish_log(log_id, stats, "failed")
 
+    # ヘルスチェック: 契約ユーザーの処理状況を確認
+    _run_health_check(stats)
+
     return stats
+
+
+def _run_health_check(stats: dict):
+    """契約ユーザー（active）に異常がないかチェックし、問題があればSlack通知。"""
+    try:
+        users = db.get_active_users()
+        if not users:
+            return
+
+        problems = []
+
+        # 契約中(active)ユーザーの確認
+        paid_users = [u for u in users if u.get("status") == "active"]
+        if not paid_users:
+            return
+
+        for user in paid_users:
+            user_id = user["id"]
+            email = user.get("notification_email", "不明")
+
+            # プロフィール未設定チェック
+            profile = db.get_user_profile(user_id)
+            if not profile:
+                problems.append(f"- {email}: プロフィール未設定")
+                continue
+
+            # 業種カテゴリ未設定チェック
+            cats = db.get_user_industry_categories(user_id)
+            if not cats:
+                problems.append(f"- {email}: 業種カテゴリ未設定")
+                continue
+
+            # エリア未設定チェック
+            areas = db.get_user_areas(user_id)
+            if not areas:
+                problems.append(f"- {email}: エリア未設定")
+                continue
+
+            # 通知エラーチェック（statsから）
+            user_errors = [
+                e for e in stats.get("error_details", [])
+                if e.get("phase") == "notify" and e.get("user_id") == user_id
+            ]
+            if user_errors:
+                problems.append(f"- {email}: 通知処理でエラー発生")
+
+        if problems:
+            notify_slack_health(
+                f"契約ユーザーヘルスチェック: {len(problems)}件の問題",
+                problems,
+            )
+        else:
+            logger.info("ヘルスチェック: 契約ユーザー %d人 全員正常", len(paid_users))
+
+    except Exception as exc:
+        logger.error("ヘルスチェック自体が失敗: %s", exc)
+        notify_slack("ヘルスチェック実行エラー", str(exc)[:500])
 
 
 def _finish_log(log_id: str, stats: dict, status: str):
