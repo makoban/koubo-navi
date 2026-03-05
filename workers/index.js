@@ -39,6 +39,22 @@ const ALLOWED_ORIGINS = [
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ---------------------------------------------------------------------------
+// Slack notification helper
+// ---------------------------------------------------------------------------
+
+async function notifySlack(env, title, detail = "") {
+  if (!env.SLACK_WEBHOOK_URL) return;
+  const text = `*[公募ナビAI Worker]*\n*${title}*` + (detail ? `\n\`\`\`${detail.slice(0, 1500)}\`\`\`` : "");
+  try {
+    await fetch(env.SLACK_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+      body: JSON.stringify({ text }),
+    });
+  } catch { /* Slack通知失敗は無視 */ }
+}
+
+// ---------------------------------------------------------------------------
 // CORS helpers
 // ---------------------------------------------------------------------------
 
@@ -207,23 +223,27 @@ IT・DX / 建設・土木 / コンサル・調査 / 広告・クリエイティ�
 ウェブサイトテキスト:
 ${pageText}`;
 
-  const geminiUrl = `${GEMINI_API_BASE}/v1beta/models/gemini-2.0-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+  const geminiUrl = `${GEMINI_API_BASE}/v1beta/models/gemini-2.0-flash:generateContent`;
   let geminiResp;
   try {
     geminiResp = await fetch(geminiUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.2, maxOutputTokens: 4096, responseMimeType: "application/json" },
       }),
     });
   } catch (err) {
+    await notifySlack(env, "Gemini API接続失敗 (会社分析)", `user: ${user_id}\n${err.message}`);
     return errorResponse(`Gemini API接続失敗: ${err.message}`, 502);
   }
 
   const geminiData = await geminiResp.json();
-  if (!geminiResp.ok) return jsonResponse({ error: "Gemini APIエラー", detail: geminiData }, geminiResp.status);
+  if (!geminiResp.ok) {
+    await notifySlack(env, "Gemini APIエラー (会社分析)", `user: ${user_id}\n${JSON.stringify(geminiData).slice(0, 500)}`);
+    return jsonResponse({ error: "Gemini APIエラー", detail: geminiData }, geminiResp.status);
+  }
 
   const text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
   let profile;
@@ -408,7 +428,7 @@ async function handleGetOpportunities(request, env) {
   const isPaid = isActive || isTrial;
 
   const url = new URL(request.url);
-  const requestedLimit = parseInt(url.searchParams.get("limit") || "500");
+  const requestedLimit = Math.min(parseInt(url.searchParams.get("limit") || "500") || 500, 500);
   const industryFilter = url.searchParams.get("industry"); // 業種カテゴリフィルター
 
   // ソートパラメータ
@@ -711,30 +731,35 @@ match_keywords: この案件に関連する企業キーワードを3〜5個生�
 match_pointsは3〜5個、concernsは2〜3個、actionsは3〜5個生成してください。
 recommended_preparation_daysは準備に必要な日数の目安です。`;
 
-  const geminiUrl = `${GEMINI_API_BASE}/v1beta/models/gemini-2.0-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+  const geminiUrl = `${GEMINI_API_BASE}/v1beta/models/gemini-2.0-flash:generateContent`;
   let geminiResp;
   try {
     geminiResp = await fetch(geminiUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.3, maxOutputTokens: 4096, responseMimeType: "application/json" },
       }),
     });
   } catch (err) {
+    await notifySlack(env, "Gemini API接続失敗 (案件分析)", `user: ${user_id}\nopp: ${opportunity_id}\n${err.message}`);
     return errorResponse(`Gemini API接続失敗: ${err.message}`, 502);
   }
 
   const geminiData = await geminiResp.json();
   if (!geminiResp.ok) {
     const detail = geminiData?.error?.message || JSON.stringify(geminiData).slice(0, 200);
+    await notifySlack(env, "Gemini APIエラー (案件分析)", `user: ${user_id}\nopp: ${opportunity_id}\n${detail}`);
     return errorResponse(`AI分析に失敗しました: ${detail}`, 502);
   }
 
   const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
   let analysis;
-  try { analysis = JSON.parse(rawText); } catch { return errorResponse("AI分析結果の解析に失敗しました", 502); }
+  try { analysis = JSON.parse(rawText); } catch {
+    await notifySlack(env, "Gemini応答パース失敗 (案件分析)", `user: ${user_id}\nopp: ${opportunity_id}\n${rawText.slice(0, 300)}`);
+    return errorResponse("AI分析結果の解析に失敗しました", 502);
+  }
 
   // Gemini が配列でラップする場合の対応
   if (Array.isArray(analysis)) analysis = analysis[0] || {};
@@ -832,7 +857,10 @@ async function handleCheckout(request, env) {
   if (email) params.set("customer_email", email);
 
   const result = await stripeRequest("/checkout/sessions", "POST", params, env);
-  if (!result.ok) return jsonResponse({ error: "Stripe Checkout エラー", detail: result.data }, result.status);
+  if (!result.ok) {
+    await notifySlack(env, "Stripe Checkoutエラー", `user: ${user_id}\n${JSON.stringify(result.data).slice(0, 500)}`);
+    return jsonResponse({ error: "Stripe Checkout エラー", detail: result.data }, result.status);
+  }
 
   return jsonResponse({ session_id: result.data.id, url: result.data.url });
 }
@@ -856,7 +884,10 @@ async function handleCancelSubscription(request, env) {
   const params = new URLSearchParams();
   params.set("cancel_at_period_end", "true");
   const result = await stripeRequest(`/subscriptions/${sub.stripe_subscription_id}`, "POST", params, env);
-  if (!result.ok) return jsonResponse({ error: "解約エラー", detail: result.data }, result.status);
+  if (!result.ok) {
+    await notifySlack(env, "サブスク解約エラー", `user: ${user_id}\nsub: ${sub.stripe_subscription_id}\n${JSON.stringify(result.data).slice(0, 500)}`);
+    return jsonResponse({ error: "解約エラー", detail: result.data }, result.status);
+  }
 
   // DB更新
   await supabaseRequest(
@@ -922,88 +953,96 @@ async function handleWebhook(request, env, ctx) {
   let event;
   try { event = JSON.parse(rawBody); } catch { return errorResponse("不正なJSON", 400); }
 
-  ctx.waitUntil((async () => {
-    try {
-      switch (event.type) {
-        case "checkout.session.completed": {
-          const session = event.data?.object;
-          if (!session || session.mode !== "subscription") break;
-          const userId = session.metadata?.user_id;
-          const plan = session.metadata?.plan || "monthly";
-          if (!userId) break;
+  // Webhook処理を同期的に実行し、失敗時はエラーを返してStripeにリトライさせる
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data?.object;
+        if (!session || session.mode !== "subscription") break;
+        const userId = session.metadata?.user_id;
+        const plan = session.metadata?.plan || "monthly";
+        if (!userId) break;
 
-          // koubo_users を作成または更新
-          await supabaseRequest(`/koubo_users?id=eq.${userId}`, "PATCH", {
-            status: "active",
-          }, env, { prefer: "return=minimal" });
+        // koubo_users を作成または更新
+        const userUpdate = await supabaseRequest(`/koubo_users?id=eq.${userId}`, "PATCH", {
+          status: "active",
+        }, env, { prefer: "return=minimal" });
+        if (!userUpdate.ok) throw new Error(`koubo_users更新失敗: ${userUpdate.status}`);
 
-          // サブスク情報を保存
-          const subId = session.subscription;
-          const customerId = session.customer;
-          await supabaseRequest("/koubo_subscriptions", "POST", {
-            user_id: userId,
-            stripe_customer_id: customerId,
-            stripe_subscription_id: subId,
-            plan,
-            status: "active",
-          }, env, {
-            prefer: "resolution=merge-duplicates,return=minimal",
-          });
-          break;
-        }
-
-        case "customer.subscription.updated": {
-          const sub = event.data?.object;
-          if (!sub) break;
-          const periodEnd = sub.current_period_end
-            ? new Date(sub.current_period_end * 1000).toISOString()
-            : null;
-          await supabaseRequest(
-            `/koubo_subscriptions?stripe_subscription_id=eq.${sub.id}`, "PATCH",
-            {
-              status: sub.cancel_at_period_end ? "cancelling" : sub.status,
-              current_period_end: periodEnd,
-            }, env, { prefer: "return=minimal" }
-          );
-          break;
-        }
-
-        case "customer.subscription.deleted": {
-          const sub = event.data?.object;
-          if (!sub) break;
-          await supabaseRequest(
-            `/koubo_subscriptions?stripe_subscription_id=eq.${sub.id}`, "PATCH",
-            { status: "cancelled", cancelled_at: new Date().toISOString() },
-            env, { prefer: "return=minimal" }
-          );
-          // koubo_users のステータスも更新
-          const subResult = await supabaseRequest(
-            `/koubo_subscriptions?stripe_subscription_id=eq.${sub.id}&select=user_id`,
-            "GET", null, env
-          );
-          if (subResult.data?.[0]?.user_id) {
-            await supabaseRequest(
-              `/koubo_users?id=eq.${subResult.data[0].user_id}`, "PATCH",
-              { status: "cancelled" }, env, { prefer: "return=minimal" }
-            );
-          }
-          break;
-        }
-
-        case "invoice.payment_failed": {
-          const invoice = event.data?.object;
-          if (!invoice?.subscription) break;
-          await supabaseRequest(
-            `/koubo_subscriptions?stripe_subscription_id=eq.${invoice.subscription}`, "PATCH",
-            { status: "past_due" }, env, { prefer: "return=minimal" }
-          );
-          break;
-        }
+        // サブスク情報を保存
+        const subId = session.subscription;
+        const customerId = session.customer;
+        const subInsert = await supabaseRequest("/koubo_subscriptions", "POST", {
+          user_id: userId,
+          stripe_customer_id: customerId,
+          stripe_subscription_id: subId,
+          plan,
+          status: "active",
+        }, env, {
+          prefer: "resolution=merge-duplicates,return=minimal",
+        });
+        if (!subInsert.ok) throw new Error(`koubo_subscriptions保存失敗: ${subInsert.status}`);
+        break;
       }
-    } catch (err) {
-      console.error("Webhook処理エラー:", err.message);
+
+      case "customer.subscription.updated": {
+        const sub = event.data?.object;
+        if (!sub) break;
+        const periodEnd = sub.current_period_end
+          ? new Date(sub.current_period_end * 1000).toISOString()
+          : null;
+        await supabaseRequest(
+          `/koubo_subscriptions?stripe_subscription_id=eq.${sub.id}`, "PATCH",
+          {
+            status: sub.cancel_at_period_end ? "cancelling" : sub.status,
+            current_period_end: periodEnd,
+          }, env, { prefer: "return=minimal" }
+        );
+        break;
+      }
+
+      case "customer.subscription.deleted": {
+        const sub = event.data?.object;
+        if (!sub) break;
+        await supabaseRequest(
+          `/koubo_subscriptions?stripe_subscription_id=eq.${sub.id}`, "PATCH",
+          { status: "cancelled", cancelled_at: new Date().toISOString() },
+          env, { prefer: "return=minimal" }
+        );
+        // koubo_users のステータスも更新
+        const subResult = await supabaseRequest(
+          `/koubo_subscriptions?stripe_subscription_id=eq.${sub.id}&select=user_id`,
+          "GET", null, env
+        );
+        if (subResult.data?.[0]?.user_id) {
+          await supabaseRequest(
+            `/koubo_users?id=eq.${subResult.data[0].user_id}`, "PATCH",
+            { status: "cancelled" }, env, { prefer: "return=minimal" }
+          );
+        }
+        break;
+      }
+
+      case "invoice.payment_failed": {
+        const invoice = event.data?.object;
+        if (!invoice?.subscription) break;
+        await supabaseRequest(
+          `/koubo_subscriptions?stripe_subscription_id=eq.${invoice.subscription}`, "PATCH",
+          { status: "past_due" }, env, { prefer: "return=minimal" }
+        );
+        ctx.waitUntil(notifySlack(env, "決済失敗 (invoice.payment_failed)",
+          `subscription: ${invoice.subscription}\ncustomer: ${invoice.customer || "不明"}\namount: ${invoice.amount_due || "不明"}`));
+        break;
+      }
     }
-  })());
+  } catch (err) {
+    console.error("Webhook処理エラー:", err.message);
+    ctx.waitUntil(notifySlack(env, "Stripe Webhook処理エラー", `event: ${event.type}\n${err.message}`));
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   return new Response(JSON.stringify({ received: true }), {
     status: 200,
@@ -1123,6 +1162,8 @@ export default {
       return addCorsOrigin(response, origin);
     } catch (err) {
       console.error("内部エラー:", err.message, err.stack);
+      const url = new URL(request.url);
+      ctx.waitUntil(notifySlack(env, "内部サーバーエラー", `${request.method} ${url.pathname}\n${err.message}\n${err.stack || ""}`));
       return addCorsOrigin(errorResponse("内部サーバーエラー", 500), origin);
     }
   },

@@ -16,6 +16,7 @@ STRIPE_PRICE_MONTHLY = "price_1T5PHq1TYnppSLqNhO9QtKZ3"   # 本番 ¥3,980/月 (
 # wrangler secret put STRIPE_SECRET_KEY
 # wrangler secret put STRIPE_WEBHOOK_SECRET
 # wrangler secret put SUPABASE_SERVICE_KEY
+# wrangler secret put SLACK_WEBHOOK_URL
 
 # --------------------------------------------------------------------------
 # ローカル開発用（.dev.vars ファイルに記載）
