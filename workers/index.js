@@ -43,6 +43,20 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 // ---------------------------------------------------------------------------
 
 async function notifySlack(env, title, detail = "") {
+  // エラーログをDBに記録
+  try {
+    await fetch(`${env.SUPABASE_URL}/rest/v1/error_logs`, {
+      method: "POST",
+      headers: {
+        "apikey": env.SUPABASE_SERVICE_KEY,
+        "Authorization": `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+      },
+      body: JSON.stringify({ source: "worker", title, detail: (detail || "").slice(0, 5000) }),
+    });
+  } catch { /* DB記録失敗は無視 */ }
+  // Slack通知
   if (!env.SLACK_WEBHOOK_URL) return;
   const text = `*[公募ナビAI Worker]*\n*${title}*` + (detail ? `\n\`\`\`${detail.slice(0, 1500)}\`\`\`` : "");
   try {

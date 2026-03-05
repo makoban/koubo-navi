@@ -7,6 +7,7 @@ Render.com Cron Job から呼び出され、以下を実行:
 """
 
 import logging
+import time
 import traceback
 from datetime import datetime, timezone
 
@@ -57,8 +58,11 @@ def run_daily_check():
         for area_id, sources in sources_by_area.items():
             logger.info("--- エリア: %s (%d sources) ---", area_id, len(sources))
 
-            for source in sources:
+            for si, source in enumerate(sources):
                 source_id = source["id"]
+                # 同一エリア内の連続リクエスト間に待機（サーバー負荷軽減）
+                if si > 0:
+                    time.sleep(2)
                 try:
                     raw_opps = scrape_source(source)
                     db.update_source_status(source_id, success=True)
