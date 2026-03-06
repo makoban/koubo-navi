@@ -63,7 +63,8 @@ def notify_user(user: dict) -> int:
                     db.save_detailed_analysis(user_id, opp["id"], analysis)
             analyzed_opps.append({"opportunity": opp, "analysis": analysis})
         except Exception as exc:
-            logger.debug("分析失敗 %s: %s", opp["id"], exc)
+            # 分析失敗は見落とさないよう warning レベルで記録
+            logger.warning("分析失敗 %s: %s", opp["id"], exc)
             analyzed_opps.append({"opportunity": opp, "analysis": None})
 
     if not analyzed_opps:
@@ -75,6 +76,14 @@ def notify_user(user: dict) -> int:
     if success:
         _log_notification(user_id, len(analyzed_opps), "sent")
         logger.info("通知完了: user=%s, %d件送信", user_id, len(analyzed_opps))
+        # 通知済みフラグを更新（送信成功後のみ）
+        notified_ids = [
+            item["opportunity"]["id"]
+            for item in analyzed_opps
+            if item.get("opportunity", {}).get("id")
+        ]
+        if notified_ids:
+            db.mark_as_notified(user_id, notified_ids)
     else:
         _log_notification(user_id, len(analyzed_opps), "failed")
         logger.error("通知失敗: user=%s, %d件のメール送信に失敗", user_id, len(analyzed_opps))
@@ -116,7 +125,7 @@ def _generate_analysis(profile: dict, opp: dict) -> dict | None:
         if isinstance(result, dict):
             return result
     except Exception as exc:
-        logger.debug("Gemini分析失敗: %s", exc)
+        logger.warning("Gemini分析失敗: %s", exc)
     return None
 
 
@@ -127,7 +136,8 @@ def _send_notification(
     total_count: int = 0,
 ) -> bool:
     """メール送信。"""
-    email = user.get("notification_email")
+    # notification_email が未設定の場合は email にフォールバック
+    email = user.get("notification_email") or user.get("email")
     if not email:
         logger.warning("通知先メールなし: user=%s", user.get("id"))
         return False
@@ -167,7 +177,7 @@ def _send_notification(
 def _log_notification(user_id: str, count: int, status: str):
     """通知ログを DB に記録する。"""
     try:
-        requests.post(
+        resp = requests.post(
             f"{config.SUPABASE_URL}/rest/v1/notifications",
             headers={
                 "apikey": config.SUPABASE_SERVICE_KEY,
@@ -183,8 +193,14 @@ def _log_notification(user_id: str, count: int, status: str):
             },
             timeout=10,
         )
+        if not resp.ok:
+            # DBへの通知ログ保存失敗は警告として記録（サイレント失敗を防止）
+            logger.warning(
+                "通知ログ保存失敗 user=%s: status=%d body=%s",
+                user_id, resp.status_code, resp.text[:200],
+            )
     except Exception as exc:
-        logger.debug("通知ログ保存失敗: %s", exc)
+        logger.warning("通知ログ保存失敗 user=%s: %s", user_id, exc)
 
 
 def _build_email_html(

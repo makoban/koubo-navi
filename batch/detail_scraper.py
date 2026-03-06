@@ -70,6 +70,9 @@ def enrich_batch(
     Returns:
         [(opportunity_id, details_dict), ...] のリスト。失敗分は含まない。
     """
+    # バッチ開始時に失敗URLキャッシュをクリア（前回バッチの残留を防ぐ）
+    _failed_urls.clear()
+
     results = []
     total = len(opps)
 

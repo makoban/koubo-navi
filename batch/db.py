@@ -5,6 +5,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from typing import Optional
+from urllib.parse import quote
 
 import requests
 
@@ -144,10 +145,16 @@ def get_opportunities_by_areas(
 
 
 def upsert_opportunities(opportunities: list[dict], area_id: str, source_id: str) -> list[dict]:
-    """案件をDB保存（重複はスキップ）。保存された案件を返す。"""
-    saved = []
-    for opp in opportunities:
-        record = {
+    """案件をDB保存（重複はスキップ）。保存された案件を返す。
+
+    リストをバルクPOSTして1回のAPIコールで完了する。
+    空リストや全件失敗時は空リストを返す。
+    """
+    if not opportunities:
+        return []
+
+    records = [
+        {
             "area_id": area_id,
             "source_id": source_id,
             "title": (opp.get("title") or "不明")[:500],
@@ -160,24 +167,28 @@ def upsert_opportunities(opportunities: list[dict], area_id: str, source_id: str
             "requirements": opp.get("requirements"),
             "detail_url": opp.get("detail_url"),
         }
-        try:
-            resp = requests.post(
-                _url("/opportunities"),
-                headers={
-                    **_headers("return=representation"),
-                    "Prefer": "resolution=merge-duplicates,return=representation",
-                },
-                json=record,
-                timeout=10,
-            )
-            if resp.ok:
-                data = resp.json()
-                if data:
-                    saved.append(data[0] if isinstance(data, list) else data)
-        except Exception as e:
-            logger.debug("upsert skip: %s", e)
+        for opp in opportunities
+    ]
 
-    return saved
+    try:
+        resp = requests.post(
+            _url("/opportunities"),
+            headers={
+                **_headers("return=representation"),
+                "Prefer": "resolution=merge-duplicates,return=representation",
+            },
+            json=records,  # リストをそのまま送信してバルクupsert
+            timeout=30,
+        )
+        if resp.ok:
+            data = resp.json()
+            return data if isinstance(data, list) else ([data] if data else [])
+        else:
+            logger.warning("バルクupsert失敗: status=%d body=%s", resp.status_code, resp.text[:300])
+    except Exception as e:
+        logger.warning("バルクupsert例外: %s", e)
+
+    return []
 
 
 # --- Opportunity Detail Enrichment ---
@@ -237,31 +248,56 @@ def get_new_opportunities_by_industry(
     since_hours: int = 24,
     area_ids: list[str] | None = None,
 ) -> list[dict]:
-    """業種カテゴリにマッチする新着案件を取得する。"""
+    """業種カテゴリにマッチする新着案件を取得する。
+
+    industry_category が NULL の案件もフォールバックとして最大50件含める。
+    カテゴリ名に特殊文字（"・"等）が含まれるためURLエンコードを適用する。
+    """
     from datetime import timedelta
 
     # isoformat() の "+00:00" はURLクエリで "+" がスペースに変換されるため "Z" に置換
     since = (datetime.now(timezone.utc) - timedelta(hours=since_hours)).isoformat().replace("+00:00", "Z")
-    cat_filter = ",".join(industry_categories)
+    # "・" 等の特殊文字をURLエンコード（Supabase の in.() フィルタで誤動作を防ぐ）
+    cat_filter = ",".join(quote(c, safe="") for c in industry_categories)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
+    area_suffix = ""
+    if area_ids:
+        area_filter = ",".join(area_ids)
+        area_suffix = f"&area_id=in.({area_filter})"
+
+    # --- Step 1: industry_category マッチ案件を取得 ---
     query = (
         f"/opportunities?industry_category=in.({cat_filter})"
         f"&scraped_at=gte.{since}"
         f"&or=(deadline.is.null,deadline.gte.{today})"
-        "&select=*&order=scraped_at.desc&limit=100"
+        f"&select=*&order=scraped_at.desc&limit=100"
+        f"{area_suffix}"
     )
-    if area_ids:
-        area_filter = ",".join(area_ids)
-        query += f"&area_id=in.({area_filter})"
-
-    resp = requests.get(
-        _url(query),
-        headers=_headers(),
-        timeout=30,
-    )
+    resp = requests.get(_url(query), headers=_headers(), timeout=30)
     resp.raise_for_status()
-    return resp.json()
+    matched = resp.json()
+
+    # --- Step 2: industry_category が NULL の新着案件をフォールバック取得 ---
+    null_query = (
+        f"/opportunities?industry_category=is.null"
+        f"&scraped_at=gte.{since}"
+        f"&or=(deadline.is.null,deadline.gte.{today})"
+        f"&select=*&order=scraped_at.desc&limit=50"
+        f"{area_suffix}"
+    )
+    resp_null = requests.get(_url(null_query), headers=_headers(), timeout=30)
+    resp_null.raise_for_status()
+    null_opps = resp_null.json()
+
+    # 重複排除してマージ（matchedのIDセットで判定）
+    matched_ids = {o["id"] for o in matched}
+    for opp in null_opps:
+        if opp["id"] not in matched_ids:
+            matched.append(opp)
+            matched_ids.add(opp["id"])
+
+    return matched
 
 
 def get_user_industry_categories(user_id: str) -> list[str]:
