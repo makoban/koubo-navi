@@ -30,6 +30,9 @@ const STRIPE_API_BASE = "https://api.stripe.com/v1";
 
 const ALLOWED_ORIGINS = [
   "https://koubo-navi.bantex.jp",
+  "https://ai-fudosan.bantex.jp",
+  "https://ai-shoken.bantex.jp",
+  "https://ai-shigyo.bantex.jp",
   "https://makoban.github.io",
   "http://localhost:8080",
   "http://127.0.0.1:8080",
@@ -55,7 +58,7 @@ async function notifySlack(env, title, detail = "") {
       },
       body: JSON.stringify({ source: "worker", title, detail: (detail || "").slice(0, 5000) }),
     });
-  } catch { /* DB記録失敗は無視 */ }
+  } catch (e) { console.error("error_logs書き込み失敗:", e.message); }
   // Slack通知
   if (!env.SLACK_WEBHOOK_URL) return;
   const text = `*[公募ナビAI Worker]*\n*${title}*` + (detail ? `\n\`\`\`${detail.slice(0, 1500)}\`\`\`` : "");
@@ -1137,6 +1140,39 @@ async function handleRegisterUser(request, env) {
 }
 
 // ---------------------------------------------------------------------------
+// Password Reset (共通: 全サービスから呼び出し可能)
+// ---------------------------------------------------------------------------
+
+async function handlePasswordReset(request, env) {
+  const body = await request.json().catch(() => null);
+  if (!body?.email || !body?.origin) return jsonResponse({ error: "email と origin が必要です" }, 400);
+
+  const email = body.email.trim().toLowerCase();
+  const origin = body.origin;
+
+  // 1. リセット元サービスをDBに記録（upsert: 同じメールは上書き）
+  await supabaseRequest(
+    "/password_reset_origins",
+    "POST",
+    { email, origin_url: origin },
+    env,
+    { headers: { "Prefer": "resolution=merge-duplicates" } }
+  );
+
+  // 2. Supabase Auth の recover メール送信
+  await fetch(`${env.SUPABASE_URL}/auth/v1/recover`, {
+    method: "POST",
+    headers: {
+      "apikey": env.SUPABASE_SERVICE_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  return jsonResponse({ ok: true });
+}
+
+// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 
@@ -1160,6 +1196,7 @@ async function router(request, env, ctx) {
   if (path === "/api/webhook" && method === "POST") return handleWebhook(request, env, ctx);
   if (path === "/api/cancel-subscription" && method === "POST") return handleCancelSubscription(request, env);
   if (path === "/api/register" && method === "POST") return handleRegisterUser(request, env);
+  if (path === "/api/password-reset" && method === "POST") return handlePasswordReset(request, env);
 
   return jsonResponse({ error: `未定義: ${method} ${path}` }, 404);
 }

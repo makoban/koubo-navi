@@ -33,7 +33,7 @@ def _log_to_db(source, title, detail=""):
             timeout=10,
         )
     except Exception:
-        logger.debug("error_logs書き込み失敗", exc_info=True)
+        logger.warning("error_logs書き込み失敗", exc_info=True)
 
 
 def notify_slack(title, detail=""):
