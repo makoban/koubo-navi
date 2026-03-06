@@ -226,10 +226,16 @@ async function handlePasswordReset() {
     alert("メールアドレスを入力してください。");
     return;
   }
-  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + window.location.pathname,
-  });
-  alert(error ? `エラー: ${error.message}` : "パスワードリセットメールを送信しました。");
+  try {
+    await fetch(`${WORKER_BASE}/api/password-reset`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, origin: window.location.origin }),
+    });
+    alert("パスワードリセットメールを送信しました。");
+  } catch {
+    alert("エラーが発生しました。もう一度お試しください。");
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -619,6 +625,14 @@ async function startTrialCheckout() {
 }
 
 async function verifyCheckout(sessionId) {
+  // Google Ads 購入コンバージョン送信
+  if (typeof gtag === 'function') {
+    gtag('event', 'conversion', {
+      send_to: 'AW-17822680636/ObktCNO1nvwbELyMwrJC',
+      value: 3980,
+      currency: 'JPY'
+    });
+  }
   showPage("dashboard");
   loadOpportunities();
 }
