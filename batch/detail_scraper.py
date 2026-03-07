@@ -161,5 +161,5 @@ def _extract_details(text: str, opp: dict) -> dict | None:
         return result
 
     except Exception as exc:
-        logger.debug("Gemini抽出失敗: %s", exc)
+        logger.warning("Gemini抽出失敗 %s: %s", opp.get("id", "?"), exc)
         return None

@@ -78,8 +78,15 @@ def parse_json_response(text: str):
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        repaired = _repair_json(text)
-        return json.loads(repaired)
+        try:
+            repaired = _repair_json(text)
+            return json.loads(repaired)
+        except json.JSONDecodeError:
+            # 最終手段: テキスト内の最初の { } ブロックを抽出
+            match = re.search(r"\{.*\}", text, re.DOTALL)
+            if match:
+                return json.loads(match.group())
+            raise
 
 
 def _count_unbalanced(text: str, open_char: str, close_char: str) -> int:

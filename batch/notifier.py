@@ -97,13 +97,13 @@ def _generate_analysis(profile: dict, opp: dict) -> dict | None:
 以下の案件情報と企業プロフィールを照らし合わせて、詳細な分析をJSON形式で出力してください。
 
 【案件情報】
-タイトル: {opp.get('title', '不明')}
-カテゴリ: {opp.get('category', '不明')}
-発注機関: {opp.get('organization', '不明')}
-業種: {opp.get('industry_category', '不明')}
-締切: {opp.get('deadline', '不明')}
-予算: {opp.get('budget', '不明')}
-要約: {opp.get('detailed_summary') or opp.get('summary', '不明')}
+タイトル: {opp.get('title') or '不明'}
+カテゴリ: {opp.get('category') or '不明'}
+発注機関: {opp.get('organization') or '不明'}
+業種: {opp.get('industry_category') or '不明'}
+締切: {opp.get('deadline') or '不明'}
+予算: {opp.get('budget') or '不明'}
+要約: {opp.get('detailed_summary') or opp.get('summary') or '不明'}
 
 【企業プロフィール】
 会社名: {profile.get('company_name', '不明')}
@@ -214,13 +214,13 @@ def _build_email_html(
         opp = item.get("opportunity", {})
         analysis = item.get("analysis") or {}
 
-        title = opp.get("title", "不明")
-        org = opp.get("organization", "不明")
-        category = opp.get("industry_category", opp.get("category", ""))
-        deadline = opp.get("deadline", "")
-        budget = opp.get("budget", "")
-        difficulty = opp.get("difficulty", "")
-        summary = opp.get("detailed_summary") or opp.get("summary", "")
+        title = opp.get("title") or "不明"
+        org = opp.get("organization") or "不明"
+        category = opp.get("industry_category") or opp.get("category") or ""
+        deadline = opp.get("deadline") or ""
+        budget = opp.get("budget") or ""
+        difficulty = opp.get("difficulty") or ""
+        summary = opp.get("detailed_summary") or opp.get("summary") or ""
         detail_url = opp.get("detail_url", "")
 
         # AI分析結果
