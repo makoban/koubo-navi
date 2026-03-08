@@ -19,7 +19,7 @@ SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
 
 # --- Resend (Email) ---
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
-FROM_EMAIL = os.environ.get("FROM_EMAIL", "公募ナビAI <noreply@bantex.jp>")
+FROM_EMAIL = os.environ.get("FROM_EMAIL", "KouboNavi AI <noreply@bantex.jp>")
 
 # --- Slack ---
 SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL", "")
