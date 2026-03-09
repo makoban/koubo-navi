@@ -1090,7 +1090,7 @@ async function handleRegisterUser(request, env) {
     `/koubo_users?id=eq.${user_id}&select=id,status`, "GET", null, env
   );
   if (existingUserResp.ok) {
-    const existingUsers = await existingUserResp.json();
+    const existingUsers = existingUserResp.data || [];
     if (existingUsers.length > 0) {
       return new Response(
         JSON.stringify({
