@@ -357,6 +357,7 @@ async function handlePutProfile(request, env) {
   if (body.notification_threshold !== undefined) updates.notification_threshold = body.notification_threshold;
   if (body.email_notify !== undefined) updates.email_notify = body.email_notify;
   if (body.notification_email !== undefined) updates.notification_email = body.notification_email;
+  if (body.company_url !== undefined) updates.company_url = body.company_url || null;
   updates.updated_at = new Date().toISOString();
 
   if (Object.keys(updates).length > 1) {

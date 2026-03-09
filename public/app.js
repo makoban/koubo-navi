@@ -1232,11 +1232,11 @@ async function reanalyzeCompany() {
 
     const analyzed = await resp.json();
 
-    // Save updated profile to server
+    // Save updated profile + company_url to server
     await fetch(`${WORKER_BASE}/api/user/profile`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(analyzed),
+      body: JSON.stringify({ ...analyzed, company_url: requestBody.url }),
     });
 
     companyProfile = { ...companyProfile, ...analyzed };
