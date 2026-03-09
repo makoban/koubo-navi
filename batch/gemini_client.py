@@ -43,12 +43,12 @@ def call_gemini(prompt: str, json_mode: bool = True, max_tokens: int = 8192) -> 
     for attempt in range(_MAX_RETRIES):
         resp = requests.post(url, headers=headers, json=payload, timeout=120)
 
-        if resp.status_code == 429:
-            # レート制限: 指数バックオフで待機してリトライ
+        if resp.status_code == 429 or resp.status_code >= 500:
+            # レート制限 or サーバーエラー: 指数バックオフで待機してリトライ
             wait = _RETRY_BASE_WAIT * (2 ** attempt)
             logger.warning(
-                "Gemini rate limit (429). %d秒待機 (attempt %d/%d)",
-                wait, attempt + 1, _MAX_RETRIES,
+                "Gemini %d error. %d秒待機 (attempt %d/%d)",
+                resp.status_code, wait, attempt + 1, _MAX_RETRIES,
             )
             time.sleep(wait)
             continue
@@ -63,7 +63,7 @@ def call_gemini(prompt: str, json_mode: bool = True, max_tokens: int = 8192) -> 
         text = candidates[0]["content"]["parts"][0]["text"]
         return text
 
-    raise RuntimeError(f"Gemini API: {_MAX_RETRIES}回リトライ後も429")
+    raise RuntimeError(f"Gemini API: {_MAX_RETRIES}回リトライ後も失敗 (last status={resp.status_code})")
 
 
 def parse_json_response(text: str):
