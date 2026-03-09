@@ -1,4 +1,4 @@
-"""公募ナビAI - メール通知モジュール v3.0（Resend API）
+"""公募ナビAI - メール通知モジュール v3.3（Resend API）
 
 業種カテゴリマッチの新着案件を通知。
 各案件のAI詳細分析を生成 or キャッシュ取得し、メールにインライン表示。
@@ -341,7 +341,7 @@ def _build_email_html(
     </div>
 
     <div style="text-align:center;margin-top:32px;color:#64748b;font-size:11px;">
-      <p>公募ナビAI v3.0 by bantex</p>
+      <p>公募ナビAI v3.3 by bantex</p>
       <p>通知設定はダッシュボードから変更できます</p>
     </div>
   </div>
