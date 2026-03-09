@@ -250,14 +250,12 @@ def get_new_opportunities_by_industry(
 ) -> list[dict]:
     """業種カテゴリにマッチする新着案件を取得する。
 
-    industry_category が NULL の案件もフォールバックとして最大50件含める。
+    ダッシュボードと同じロジック（industry_categoryマッチのみ）で取得する。
     カテゴリ名に特殊文字（"・"等）が含まれるためURLエンコードを適用する。
     """
     from datetime import timedelta
 
-    # isoformat() の "+00:00" はURLクエリで "+" がスペースに変換されるため "Z" に置換
     since = (datetime.now(timezone.utc) - timedelta(hours=since_hours)).isoformat().replace("+00:00", "Z")
-    # "・" 等の特殊文字をURLエンコード（Supabase の in.() フィルタで誤動作を防ぐ）
     cat_filter = ",".join(quote(c, safe="") for c in industry_categories)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
@@ -266,7 +264,6 @@ def get_new_opportunities_by_industry(
         area_filter = ",".join(area_ids)
         area_suffix = f"&area_id=in.({area_filter})"
 
-    # --- Step 1: industry_category マッチ案件を取得 ---
     query = (
         f"/opportunities?industry_category=in.({cat_filter})"
         f"&scraped_at=gte.{since}"
@@ -276,28 +273,7 @@ def get_new_opportunities_by_industry(
     )
     resp = requests.get(_url(query), headers=_headers(), timeout=30)
     resp.raise_for_status()
-    matched = resp.json()
-
-    # --- Step 2: industry_category が NULL の新着案件をフォールバック取得 ---
-    null_query = (
-        f"/opportunities?industry_category=is.null"
-        f"&scraped_at=gte.{since}"
-        f"&or=(deadline.is.null,deadline.gte.{today})"
-        f"&select=*&order=scraped_at.desc&limit=50"
-        f"{area_suffix}"
-    )
-    resp_null = requests.get(_url(null_query), headers=_headers(), timeout=30)
-    resp_null.raise_for_status()
-    null_opps = resp_null.json()
-
-    # 重複排除してマージ（matchedのIDセットで判定）
-    matched_ids = {o["id"] for o in matched}
-    for opp in null_opps:
-        if opp["id"] not in matched_ids:
-            matched.append(opp)
-            matched_ids.add(opp["id"])
-
-    return matched
+    return resp.json()
 
 
 def get_user_industry_categories(user_id: str) -> list[str]:
