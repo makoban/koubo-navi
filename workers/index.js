@@ -1083,6 +1083,25 @@ async function handleRegisterUser(request, env) {
     return errorResponse("company_url または company_text のいずれかは必須です", 400);
   }
 
+  // 既登録ユーザーの二重登録を防止
+  // koubo_users にレコードが存在する場合は登録を拒否する
+  // プロフィール変更は /api/user/profile (PUT) から行う
+  const existingUserResp = await supabaseRequest(
+    `/koubo_users?id=eq.${user_id}&select=id,status`, "GET", null, env
+  );
+  if (existingUserResp.ok) {
+    const existingUsers = await existingUserResp.json();
+    if (existingUsers.length > 0) {
+      return new Response(
+        JSON.stringify({
+          error: "already_registered",
+          message: "このアカウントは既に登録済みです。プロフィールの変更は設定画面から行ってください。",
+        }),
+        { status: 409, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }
+
   const trialEnd = new Date(Date.now() + 7 * 86400000).toISOString();
 
   // koubo_users を upsert

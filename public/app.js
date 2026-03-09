@@ -291,6 +291,11 @@ function startOnboarding() {
     const origCallback = supabaseClient.auth.onAuthStateChange;
     return;
   }
+  // 既にオンボーディング済みのユーザーはダッシュボードへ
+  if (userOnboarded) {
+    showPage("dashboard");
+    return;
+  }
   showPage("onboarding");
   goOnboardingStep(1);
   loadAreas();
@@ -581,6 +586,13 @@ async function registerAndGoToPayment() {
       }),
     });
 
+    if (resp.status === 409) {
+      // 既登録ユーザーがオンボーディングを通過しようとした場合
+      // ダッシュボードへリダイレクトして既存データを保護する
+      userOnboarded = true;
+      showPage("dashboard");
+      return;
+    }
     if (!resp.ok) throw new Error("登録に失敗しました");
 
     userOnboarded = true;
