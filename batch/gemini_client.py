@@ -77,7 +77,13 @@ def parse_json_response(text: str):
         text = "\n".join(lines[1:end])
     try:
         return json.loads(text)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        # Extra data: JSONの後に余計なテキスト → 有効部分だけ切り出す
+        if "Extra data" in str(e) and e.pos:
+            try:
+                return json.loads(text[:e.pos])
+            except json.JSONDecodeError:
+                pass
         try:
             repaired = _repair_json(text)
             return json.loads(repaired)
