@@ -11,6 +11,54 @@
     gtag('js', new Date());
     gtag('config', 'AW-17822680636');
   </script>
+  <script>
+    /**
+     * Google Ads コンバージョンイベントを発火してからコールバックを実行する。
+     * event_callback が非対応のブラウザや通信失敗に備えて setTimeout でフォールバックする。
+     * @param {Function} callback - コンバージョン送信後に実行する関数
+     */
+    function fireConversionAndThen(callback) {
+      var called = false;
+      function proceed() {
+        if (!called) {
+          called = true;
+          if (typeof callback === 'function') callback();
+        }
+      }
+      // フォールバック: 1秒後に必ず callback を実行
+      var fallbackTimer = setTimeout(proceed, 1000);
+
+      gtag('event', 'conversion', {
+        'send_to': 'AW-17822680636/ObktCNO1nvwbELyMwrJC',
+        'value': 3980.0,
+        'currency': 'JPY',
+        'event_callback': function() {
+          clearTimeout(fallbackTimer);
+          proceed();
+        }
+      });
+    }
+
+    /**
+     * CTAボタン（オンボーディング開始）用ラッパー。
+     * コンバージョンを発火してから startOnboarding() を呼び出す。
+     */
+    function ctaStartOnboarding() {
+      fireConversionAndThen(function() {
+        if (typeof startOnboarding === 'function') startOnboarding();
+      });
+    }
+
+    /**
+     * CTAボタン（トライアル開始）用ラッパー。
+     * コンバージョンを発火してから startTrialCheckout() を呼び出す。
+     */
+    function ctaStartTrialCheckout() {
+      fireConversionAndThen(function() {
+        if (typeof startTrialCheckout === 'function') startTrialCheckout();
+      });
+    }
+  </script>
   <title>公募ナビAI - 入札公募の巡回はもう不要。月3,980円でAIが毎朝お届け</title>
   <meta name="description" content="入札・公募サイトを自分で毎日探すのは終わり。AIが公募・入札情報を自動収集し、スコアで相性を判定。毎朝メール通知。月3,980円・7日間無料。">
   <link rel="stylesheet" href="style.css?v=3.2">
@@ -61,7 +109,7 @@
           <span class="hero__usp-item">&#x2713; URL入力だけで即開始</span>
         </div>
         <div class="hero__actions">
-          <button class="btn btn--primary btn--lg" onclick="startOnboarding()">無料で始める（7日間）</button>
+          <button class="btn btn--primary btn--lg" onclick="ctaStartOnboarding()">無料で始める（7日間）</button>
           <a href="#service-sample" class="btn btn--outline btn--lg">サンプルを見る</a>
         </div>
         <p class="hero__note">7日間無料トライアル / 途中解約可 / クレカ不要</p>
@@ -342,7 +390,7 @@
             <li>AI詳細分析レポート</li>
             <li>いつでも解約可能</li>
           </ul>
-          <button class="btn btn--primary btn--lg" onclick="startOnboarding()">無料で始める</button>
+          <button class="btn btn--primary btn--lg" onclick="ctaStartOnboarding()">無料で始める</button>
         </div>
       </div>
     </section>
@@ -391,7 +439,7 @@
     <section class="cta">
       <h2>入札・公募サイトを自分で探す日々は、今日で終わり</h2>
       <p>URL入力だけで準備完了。7日間無料でAIの実力をお確かめください。</p>
-      <button class="btn btn--primary btn--lg" onclick="startOnboarding()">無料で始める</button>
+      <button class="btn btn--primary btn--lg" onclick="ctaStartOnboarding()">無料で始める</button>
     </section>
 
     <!-- LINE Support -->
@@ -499,7 +547,7 @@
 
         <div class="onboarding__actions">
           <button class="btn btn--outline" onclick="goOnboardingStep(2)">戻る</button>
-          <button class="btn btn--primary btn--lg" id="startTrialBtn" onclick="startTrialCheckout()">トライアルを開始する（月額 &#165;3,980）</button>
+          <button class="btn btn--primary btn--lg" id="startTrialBtn" onclick="ctaStartTrialCheckout()">トライアルを開始する（月額 &#165;3,980）</button>
         </div>
       </div>
     </div>
