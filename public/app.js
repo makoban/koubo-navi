@@ -934,6 +934,7 @@ function loadSettings(profileData) {
       <div class="profile-card__row"><span class="profile-card__label">提供サービス</span><span class="profile-card__value">${escapeHtml((p.services || []).join("、"))}</span></div>
       <div class="profile-card__row"><span class="profile-card__label">強み</span><span class="profile-card__value">${escapeHtml((p.strengths || []).join("、"))}</span></div>
       ${companyUrl ? `<div class="profile-card__row"><span class="profile-card__label">URL</span><span class="profile-card__value"><a href="${escapeHtml(companyUrl)}" target="_blank" style="color:var(--accent)">${escapeHtml(companyUrl)}</a></span></div>` : ""}
+      <button class="btn btn--outline btn--sm" onclick="startProfileEdit()" style="margin-top:12px;">プロフィールを編集</button>
     `;
   }
 
@@ -1106,38 +1107,114 @@ async function saveSettings() {
   });
 }
 
-function switchSettingsInputMode(mode) {
-  const urlGroup = document.getElementById("settingsUrlGroup");
-  const textGroup = document.getElementById("settingsTextGroup");
-  const tabUrl = document.getElementById("settingsTabUrl");
-  const tabText = document.getElementById("settingsTabText");
+const ALL_INDUSTRY_CATEGORIES = ["IT・DX", "建設・土木", "コンサル・調査", "広告・クリエイティブ", "設備・物品", "清掃・管理", "医療・福祉", "教育・研修", "環境・エネルギー", "その他"];
 
-  if (mode === "url") {
-    urlGroup.classList.remove("hidden");
-    textGroup.classList.add("hidden");
-    tabUrl.classList.add("active");
-    tabText.classList.remove("active");
-  } else {
+function startProfileEdit() {
+  const editPanel = document.getElementById("settingsProfileEdit");
+  editPanel.classList.remove("hidden");
+
+  // Pre-fill fields with current profile
+  const p = companyProfile || {};
+  document.getElementById("editCompanyName").value = p.company_name || "";
+  document.getElementById("editLocation").value = p.location || "";
+  document.getElementById("editBusinessAreas").value = (p.business_areas || []).join("、");
+  document.getElementById("editServices").value = (p.services || []).join("、");
+  document.getElementById("editStrengths").value = (p.strengths || []).join("、");
+
+  // Render industry category checkboxes
+  const container = document.getElementById("editIndustryCategories");
+  const current = p.industry_categories || [];
+  container.innerHTML = ALL_INDUSTRY_CATEGORIES.map(cat => {
+    const checked = current.includes(cat) ? "checked" : "";
+    return `<label style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text-secondary);cursor:pointer;">
+      <input type="checkbox" value="${escapeHtml(cat)}" ${checked} class="industry-cat-checkbox"> ${escapeHtml(cat)}
+    </label>`;
+  }).join("");
+
+  // Default to manual mode
+  switchProfileEditMode("manual");
+}
+
+function cancelProfileEdit() {
+  document.getElementById("settingsProfileEdit").classList.add("hidden");
+  const statusEl = document.getElementById("settingsAnalyzeStatus");
+  statusEl.classList.add("hidden");
+  statusEl.textContent = "";
+}
+
+function switchProfileEditMode(mode) {
+  const manualGroup = document.getElementById("profileEditManual");
+  const urlGroup = document.getElementById("profileEditUrl");
+  const tabManual = document.getElementById("settingsEditTabManual");
+  const tabUrl = document.getElementById("settingsEditTabUrl");
+
+  if (mode === "manual") {
+    manualGroup.classList.remove("hidden");
     urlGroup.classList.add("hidden");
-    textGroup.classList.remove("hidden");
+    tabManual.classList.add("active");
     tabUrl.classList.remove("active");
-    tabText.classList.add("active");
+  } else {
+    manualGroup.classList.add("hidden");
+    urlGroup.classList.remove("hidden");
+    tabManual.classList.remove("active");
+    tabUrl.classList.add("active");
   }
 }
 
-async function reanalyzeCompany(mode) {
-  const statusEl = document.getElementById("settingsAnalyzeStatus");
-  let requestBody;
+function _splitInput(val) {
+  return val.split(/[、,，]/).map(s => s.trim()).filter(Boolean);
+}
 
-  if (mode === "text") {
-    const text = document.getElementById("settingsTextInput").value.trim();
-    if (!text || text.length < 50) { alert("事業内容を50文字以上入力してください"); return; }
-    requestBody = { text };
-  } else {
-    const url = document.getElementById("settingsUrlInput").value.trim();
-    if (!url) { alert("URLを入力してください"); return; }
-    requestBody = { url: url.startsWith("http") ? url : "https://" + url };
+async function saveProfileManual() {
+  const companyName = document.getElementById("editCompanyName").value.trim();
+  if (!companyName) { alert("会社名を入力してください"); return; }
+
+  const profileUpdate = {
+    company_name: companyName,
+    location: document.getElementById("editLocation").value.trim(),
+    business_areas: _splitInput(document.getElementById("editBusinessAreas").value),
+    services: _splitInput(document.getElementById("editServices").value),
+    strengths: _splitInput(document.getElementById("editStrengths").value),
+    industry_categories: Array.from(document.querySelectorAll(".industry-cat-checkbox:checked")).map(cb => cb.value),
+  };
+
+  if (profileUpdate.industry_categories.length === 0) {
+    alert("業種カテゴリを1つ以上選択してください");
+    return;
   }
+
+  const statusEl = document.getElementById("settingsAnalyzeStatus");
+  statusEl.textContent = "保存中...";
+  statusEl.classList.remove("hidden");
+  statusEl.style.color = "";
+
+  try {
+    const token = await getAccessToken();
+    const resp = await fetch(`${WORKER_BASE}/api/user/profile`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(profileUpdate),
+    });
+    if (!resp.ok) throw new Error("保存に失敗しました");
+
+    // Update local state
+    companyProfile = { ...companyProfile, ...profileUpdate };
+
+    statusEl.textContent = "プロフィールを更新しました";
+    statusEl.style.color = "var(--success)";
+    cancelProfileEdit();
+    loadDashboard();
+  } catch (err) {
+    statusEl.textContent = `エラー: ${err.message}`;
+    statusEl.style.color = "var(--danger)";
+  }
+}
+
+async function reanalyzeCompany() {
+  const statusEl = document.getElementById("settingsAnalyzeStatus");
+  const url = document.getElementById("settingsUrlInput").value.trim();
+  if (!url) { alert("URLを入力してください"); return; }
+  const requestBody = { url: url.startsWith("http") ? url : "https://" + url };
 
   statusEl.textContent = "AIが分析中...";
   statusEl.classList.remove("hidden");
@@ -1153,17 +1230,20 @@ async function reanalyzeCompany(mode) {
 
     if (!resp.ok) throw new Error("分析に失敗しました");
 
-    companyProfile = await resp.json();
+    const analyzed = await resp.json();
 
     // Save updated profile to server
     await fetch(`${WORKER_BASE}/api/user/profile`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(companyProfile),
+      body: JSON.stringify(analyzed),
     });
 
-    statusEl.textContent = "再分析が完了しました";
+    companyProfile = { ...companyProfile, ...analyzed };
+
+    statusEl.textContent = "分析が完了しました";
     statusEl.style.color = "var(--success)";
+    cancelProfileEdit();
     loadDashboard();
   } catch (err) {
     statusEl.textContent = `エラー: ${err.message}`;

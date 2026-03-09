@@ -1010,6 +1010,14 @@ body {
   line-height: 1.6;
 }
 
+.input-label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
 /* Trial Info */
 .trial-info {
   background: var(--accent-light);

@@ -627,23 +627,49 @@
           <div id="settingsProfile">
             <!-- JS で描画 -->
           </div>
-        </div>
-        <div class="settings-section">
-          <h3>事業内容の再分析</h3>
-          <p style="color:var(--text-secondary);margin-bottom:12px;">URLまたはテキストで事業内容を再分析できます。</p>
-          <div class="input-mode-tabs">
-            <button class="input-mode-tab active" id="settingsTabUrl" onclick="switchSettingsInputMode('url')">URLで入力</button>
-            <button class="input-mode-tab" id="settingsTabText" onclick="switchSettingsInputMode('text')">テキストで入力</button>
+          <div id="settingsProfileEdit" class="hidden" style="margin-top:16px;">
+            <div class="input-mode-tabs" style="margin-bottom:16px;">
+              <button class="input-mode-tab active" id="settingsEditTabManual" onclick="switchProfileEditMode('manual')">手動で編集</button>
+              <button class="input-mode-tab" id="settingsEditTabUrl" onclick="switchProfileEditMode('url')">URLで自動入力</button>
+            </div>
+            <div id="profileEditManual">
+              <div style="margin-bottom:12px;">
+                <label class="input-label">会社名</label>
+                <input type="text" id="editCompanyName" class="input" placeholder="株式会社○○">
+              </div>
+              <div style="margin-bottom:12px;">
+                <label class="input-label">所在地</label>
+                <input type="text" id="editLocation" class="input" placeholder="愛知県名古屋市">
+              </div>
+              <div style="margin-bottom:12px;">
+                <label class="input-label">事業分野（カンマ区切り）</label>
+                <input type="text" id="editBusinessAreas" class="input" placeholder="Web制作、システム開発、コンサルティング">
+              </div>
+              <div style="margin-bottom:12px;">
+                <label class="input-label">提供サービス（カンマ区切り）</label>
+                <input type="text" id="editServices" class="input" placeholder="ホームページ制作、SEO対策、アプリ開発">
+              </div>
+              <div style="margin-bottom:12px;">
+                <label class="input-label">強み（カンマ区切り）</label>
+                <input type="text" id="editStrengths" class="input" placeholder="10年の実績、低価格、迅速対応">
+              </div>
+              <div style="margin-bottom:12px;">
+                <label class="input-label">業種カテゴリ（複数選択可）</label>
+                <div id="editIndustryCategories" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:16px;">
+                <button class="btn btn--primary btn--sm" onclick="saveProfileManual()">保存する</button>
+                <button class="btn btn--outline btn--sm" onclick="cancelProfileEdit()">キャンセル</button>
+              </div>
+            </div>
+            <div id="profileEditUrl" class="hidden">
+              <p style="color:var(--text-secondary);margin-bottom:12px;">会社のURLを入力するとAIが自動で事業内容を分析します。</p>
+              <input type="url" id="settingsUrlInput" placeholder="https://example.co.jp" class="input input--lg" style="margin-bottom:12px;">
+              <button class="btn btn--primary btn--sm" onclick="reanalyzeCompany('url')">URLで自動入力</button>
+            </div>
+            <div id="settingsAnalyzeStatus" class="status-msg hidden" style="margin-top:8px;"></div>
           </div>
-          <div id="settingsUrlGroup">
-            <input type="url" id="settingsUrlInput" placeholder="https://example.co.jp" class="input input--lg" style="margin-bottom:12px;">
-            <button class="btn btn--primary btn--sm" onclick="reanalyzeCompany('url')">URLで再分析</button>
-          </div>
-          <div id="settingsTextGroup" class="hidden">
-            <textarea id="settingsTextInput" class="input input--lg input--textarea" rows="5" placeholder="事業内容、提供サービス、強み、保有資格などを自由に記述してください（50文字以上）" style="margin-bottom:12px;"></textarea>
-            <button class="btn btn--primary btn--sm" onclick="reanalyzeCompany('text')">テキストで再分析</button>
-          </div>
-          <div id="settingsAnalyzeStatus" class="status-msg hidden" style="margin-top:8px;"></div>
         </div>
         <div class="settings-section">
           <h3>通知設定</h3>

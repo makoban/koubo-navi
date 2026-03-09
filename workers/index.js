@@ -366,21 +366,33 @@ async function handlePutProfile(request, env) {
     );
   }
 
-  // matching_keywords の更新（company_profiles が未作成の場合は upsert）
-  if (body.matching_keywords && Array.isArray(body.matching_keywords)) {
+  // company_profiles の更新（手動編集・matching_keywords含む）
+  const profileFields = {};
+  if (body.company_name !== undefined) profileFields.company_name = body.company_name || null;
+  if (body.location !== undefined) profileFields.location = body.location || null;
+  if (body.business_areas !== undefined) profileFields.business_areas = Array.isArray(body.business_areas) ? body.business_areas : [];
+  if (body.services !== undefined) profileFields.services = Array.isArray(body.services) ? body.services : [];
+  if (body.strengths !== undefined) profileFields.strengths = Array.isArray(body.strengths) ? body.strengths : [];
+  if (body.matching_keywords !== undefined) profileFields.matching_keywords = Array.isArray(body.matching_keywords) ? body.matching_keywords : [];
+  if (body.industry_categories !== undefined) {
+    const validCategories = ["IT・DX", "建設・土木", "コンサル・調査", "広告・クリエイティブ", "設備・物品", "清掃・管理", "医療・福祉", "教育・研修", "環境・エネルギー", "その他"];
+    const cats = (Array.isArray(body.industry_categories) ? body.industry_categories : []).filter(c => validCategories.includes(c));
+    if (cats.length > 0) profileFields.industry_categories = cats;
+  }
+
+  if (Object.keys(profileFields).length > 0) {
     const profileCheck = await supabaseRequest(
       `/company_profiles?user_id=eq.${user_id}&select=id`, "GET", null, env
     );
     if (profileCheck.data && profileCheck.data.length > 0) {
       await supabaseRequest(
         `/company_profiles?user_id=eq.${user_id}`, "PATCH",
-        { matching_keywords: body.matching_keywords },
-        env, { prefer: "return=minimal" }
+        profileFields, env, { prefer: "return=minimal" }
       );
     } else {
       await supabaseRequest(
         `/company_profiles`, "POST",
-        { user_id, matching_keywords: body.matching_keywords },
+        { user_id, ...profileFields },
         env, { prefer: "return=minimal" }
       );
     }
