@@ -128,13 +128,19 @@ def _generate_analysis(profile: dict, opp: dict) -> dict | None:
   "actions": ["アクション1", "アクション2", "アクション3"]
 }}"""
 
-    try:
-        response = call_gemini(prompt, json_mode=True, max_tokens=2048)
-        result = parse_json_response(response)
-        if isinstance(result, dict):
-            return result
-    except Exception as exc:
-        logger.warning("Gemini分析失敗: %s", exc)
+    import time as _time
+    for _try in range(2):
+        try:
+            response = call_gemini(prompt, json_mode=True, max_tokens=2048)
+            result = parse_json_response(response)
+            if isinstance(result, dict):
+                return result
+        except Exception as exc:
+            if _try == 0:
+                logger.debug("Gemini分析JSONパース失敗、リトライ: %s", exc)
+                _time.sleep(3)
+            else:
+                logger.warning("Gemini分析2回失敗: %s", exc)
     return None
 
 

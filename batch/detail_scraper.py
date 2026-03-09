@@ -123,10 +123,23 @@ def _extract_details(text: str, opp: dict) -> dict | None:
 {text}"""
 
     try:
-        response = call_gemini(prompt, json_mode=True, max_tokens=1024)
-        result = parse_json_response(response)
-
-        if not isinstance(result, dict):
+        result = None
+        last_err = None
+        for _try in range(2):
+            try:
+                response = call_gemini(prompt, json_mode=True, max_tokens=1024)
+                parsed = parse_json_response(response)
+                if isinstance(parsed, dict):
+                    result = parsed
+                    break
+            except Exception as e:
+                last_err = e
+                if _try == 0:
+                    logger.debug("JSONパース失敗、リトライ: %s", e)
+                    time.sleep(3)
+        if result is None:
+            if last_err:
+                logger.warning("Gemini JSON 2回失敗 %s: %s", opp.get("id", "?"), last_err)
             return None
 
         # バリデーション: 日付形式チェック（YYYY-MM-DD）
