@@ -96,7 +96,7 @@
   <main id="landingPage">
 
     <!-- Hero -->
-    <section class="hero">
+    <section class="hero" id="hero">
       <div class="hero__content">
         <div class="hero__live-counter">
           <span class="hero__live-dot"></span>
@@ -125,7 +125,7 @@
     </section>
 
     <!-- Proof Bar -->
-    <section class="proof-bar">
+    <section class="proof-bar" id="proof-bar">
       <div class="proof-bar__inner">
         <div class="proof-bar__item">
           <div class="proof-bar__number" id="statRecentWeek">--</div>
@@ -204,7 +204,7 @@
     </section>
 
     <!-- 3 Steps -->
-    <section class="steps">
+    <section class="steps" id="steps">
       <h2 class="section-title">設定は3分。あとは毎朝届くだけ</h2>
       <p class="section-desc">キーワード設定や業種登録は不要。URLを入れたらAIが全部やります</p>
       <div class="section-divider"></div>
@@ -232,7 +232,7 @@
     </section>
 
     <!-- Before / After -->
-    <section class="comparison">
+    <section class="comparison" id="comparison">
       <h2 class="section-title">毎日の入札・公募サイト巡回、まだ続けますか？</h2>
       <p class="section-desc">1日30分の手作業 vs AIに完全おまかせ</p>
       <div class="section-divider"></div>
@@ -358,7 +358,7 @@
     </section>
 
     <!-- Match Score Detail -->
-    <section class="sample-section">
+    <section class="sample-section" id="sample-section">
       <h2 class="section-title">AIが「この案件、御社に合います」と判定</h2>
       <p class="section-desc">業種カテゴリで自動マッチ。気になる案件はワンクリックでAI詳細分析</p>
       <div class="section-divider"></div>
@@ -404,7 +404,7 @@
     </section>
 
     <!-- FAQ -->
-    <section class="faq">
+    <section class="faq" id="faq">
       <h2 class="section-title">よくある質問</h2>
       <div class="section-divider"></div>
       <div class="faq__list">
@@ -444,14 +444,14 @@
     </section>
 
     <!-- CTA -->
-    <section class="cta">
+    <section class="cta" id="cta">
       <h2>入札・公募サイトを自分で探す日々は、今日で終わり</h2>
       <p>URL入力だけで準備完了。7日間無料でAIの実力をお確かめください。</p>
       <button class="btn btn--primary btn--lg" onclick="ctaStartOnboarding()">無料で始める</button>
     </section>
 
     <!-- LINE Support -->
-    <section class="line-support">
+    <section class="line-support" id="line-support">
       <div class="line-support__inner">
         <div class="line-support__icon">
           <svg width="36" height="36" viewBox="0 0 24 24" fill="#06C755"><path d="M12 2C6.48 2 2 5.83 2 10.5c0 4.08 3.42 7.5 8.05 8.32.31.07.74.21.85.48.1.25.06.63.03.88l-.14.82c-.04.25-.2.97.85.53s5.61-3.3 7.66-5.65C21.13 13.87 22 12.25 22 10.5 22 5.83 17.52 2 12 2zm-3.08 11.13H6.58c-.29 0-.52-.24-.52-.52V8.72c0-.29.24-.52.52-.52s.52.24.52.52v3.37h1.82c.29 0 .52.24.52.52s-.24.52-.52.52zm1.62-.52c0 .29-.24.52-.52.52s-.52-.24-.52-.52V8.72c0-.29.24-.52.52-.52s.52.24.52.52v3.89zm4.56 0a.52.52 0 0 1-.42.21.52.52 0 0 1-.42-.21l-2.52-3.42v3.42c0 .29-.24.52-.52.52s-.52-.24-.52-.52V8.72c0-.22.14-.42.34-.49a.52.52 0 0 1 .6.18l2.52 3.42V8.72c0-.29.24-.52.52-.52s.52.24.52.52v3.89zm2.94-2.34c.29 0 .52.24.52.52s-.24.52-.52.52h-1.82v1.3h1.82c.29 0 .52.24.52.52s-.24.52-.52.52h-2.34c-.29 0-.52-.24-.52-.52V8.72c0-.29.24-.52.52-.52h2.34c.29 0 .52.24.52.52s-.24.52-.52.52h-1.82v1.3h1.82z"/></svg>
@@ -751,5 +751,26 @@
   </a>
 
   <script src="app.js?v=3.2"></script>
+  <script>
+  (function(){
+    var sid = localStorage.getItem('_bx_sid');
+    if (!sid) { sid = crypto.randomUUID(); localStorage.setItem('_bx_sid', sid); }
+    var dt = window.innerWidth < 768 ? 'mobile' : 'desktop';
+    var ref = document.referrer || '';
+    var sent = {};
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (!entry.isIntersecting) return;
+        var secId = entry.target.getAttribute('data-section') || entry.target.id;
+        if (!secId || sent[secId]) return;
+        sent[secId] = true;
+        var blob = new Blob([JSON.stringify({ session_id: sid, service_key: 'koubo-navi', section_id: secId, device_type: dt, referrer: ref })], {type: 'application/json'});
+        navigator.sendBeacon('https://bantex-ads-dashboard.onrender.com/api/track/scroll', blob);
+      });
+    }, { threshold: 0.3 });
+
+    document.querySelectorAll('section[id]').forEach(function(el) { observer.observe(el); });
+  })();
+  </script>
 </body>
 </html>
