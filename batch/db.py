@@ -430,6 +430,25 @@ def get_unnotified_matches(user_id: str, threshold: int = 40) -> list[dict]:
     return resp.json()
 
 
+def get_notified_opportunity_ids(user_id: str) -> set[str]:
+    """ユーザーの通知済み案件IDセットを取得する（重複送信防止用）。"""
+    try:
+        resp = requests.get(
+            _url(
+                f"/user_opportunities?user_id=eq.{user_id}"
+                "&is_notified=eq.true"
+                "&select=opportunity_id"
+            ),
+            headers=_headers(),
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return {r["opportunity_id"] for r in resp.json()}
+    except Exception as e:
+        logger.warning("通知済みID取得失敗: %s", e)
+        return set()
+
+
 def mark_as_notified(user_id: str, opportunity_ids: list[str]):
     """マッチング結果を通知済みに更新。"""
     now = datetime.now(timezone.utc).isoformat()

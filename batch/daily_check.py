@@ -62,7 +62,7 @@ def run_daily_check():
                 source_id = source["id"]
                 # 同一エリア内の連続リクエスト間に待機（サーバー負荷軽減）
                 if si > 0:
-                    time.sleep(2)
+                    time.sleep(1)
                 try:
                     raw_opps = scrape_source(source)
                     db.update_source_status(source_id, success=True)
@@ -94,7 +94,7 @@ def run_daily_check():
             unenriched = db.get_unenriched_opportunities(limit=500)
             if unenriched:
                 logger.info("=== 詳細取得フェーズ: %d件 ===", len(unenriched))
-                results = enrich_batch(unenriched, batch_size=10, delay=0.5)
+                results = enrich_batch(unenriched, batch_size=10, delay=0.2)
                 enriched_count = 0
                 for opp_id, details in results:
                     try:

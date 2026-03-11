@@ -4,6 +4,8 @@ DB駆動: area_sources テーブルからソース一覧を取得してスクレ
 HTML スクレイピング + Gemini 抽出と、kkj.go.jp API の2方式に対応。
 """
 
+import hashlib
+import json
 import logging
 import re
 import time
@@ -23,6 +25,7 @@ def scrape_source(source: dict) -> list[dict]:
 
     notes フィールドが "api:kkj" の場合は kkj.go.jp API を使用し、
     それ以外は従来の HTML スクレイピング + Gemini 抽出を使用する。
+    HTMLソースはコンテンツハッシュで変更検知し、未変更ならGeminiをスキップ。
 
     Args:
         source: area_sources テーブルの行。
@@ -36,6 +39,32 @@ def scrape_source(source: dict) -> list[dict]:
         return _scrape_kkj_api(source)
 
     return _scrape_html(source)
+
+
+def _get_stored_hash(source: dict) -> str | None:
+    """area_sources.notes から保存済みコンテンツハッシュを取得。"""
+    notes = source.get("notes", "") or ""
+    if notes.startswith("{"):
+        try:
+            return json.loads(notes).get("content_hash")
+        except (json.JSONDecodeError, AttributeError):
+            pass
+    return None
+
+
+def _save_content_hash(source_id: str, content_hash: str):
+    """コンテンツハッシュを area_sources.notes に保存。"""
+    import db
+    notes_json = json.dumps({"content_hash": content_hash})
+    try:
+        requests.patch(
+            f"{db.SUPABASE_URL}/rest/v1/area_sources?id=eq.{source_id}",
+            headers=db._headers("return=minimal"),
+            json={"notes": notes_json},
+            timeout=10,
+        )
+    except Exception as exc:
+        logger.debug("ハッシュ保存失敗 %s: %s", source_id, exc)
 
 
 def _scrape_kkj_api(source: dict) -> list[dict]:
@@ -323,8 +352,19 @@ def _scrape_html(source: dict) -> list[dict]:
             logger.warning("テキスト取得できず: %s", source_name)
             return []
 
+        # コンテンツハッシュで変更検知 → 未変更ならGeminiスキップ
+        content_hash = hashlib.md5(text.encode("utf-8", errors="replace")).hexdigest()
+        stored_hash = _get_stored_hash(source)
+        if content_hash == stored_hash:
+            logger.info("  -> ページ変更なし (hash match), Geminiスキップ: %s", source_name)
+            return []
+
         opportunities = _extract_opportunities(text, source_name, source_url)
         logger.info("  -> %d件の案件を検出", len(opportunities))
+
+        # 成功時にハッシュを保存（次回比較用）
+        _save_content_hash(source.get("id", ""), content_hash)
+
         return opportunities
 
     except Exception as exc:

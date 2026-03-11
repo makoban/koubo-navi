@@ -34,9 +34,10 @@ def notify_user(user: dict) -> int:
     # ユーザーのエリアを取得
     user_areas = db.get_user_areas(user_id)
 
-    # 業種マッチの新着案件を取得（過去24時間、エリア絞り込み）
+    # 業種マッチの新着案件を取得（過去72時間、エリア絞り込み）
+    # 72hに拡大: バッチ未実行日があっても案件を取りこぼさない
     logger.info("業種マッチ検索: user=%s, cats=%s, areas=%s", user_id, industry_cats, user_areas)
-    new_opps = db.get_new_opportunities_by_industry(industry_cats, since_hours=24, area_ids=user_areas or None)
+    new_opps = db.get_new_opportunities_by_industry(industry_cats, since_hours=72, area_ids=user_areas or None)
 
     # ダッシュボードと同じフィルターを適用
     BAD_URLS = ["/pps-web-biz/UAA01/OAA0101", "/all.html"]
@@ -45,6 +46,14 @@ def notify_user(user: dict) -> int:
         if opp.get("detail_url")
         and not any(bad in opp["detail_url"] for bad in BAD_URLS)
     ]
+
+    # 通知済み案件を除外（72h化による重複送信を防止）
+    notified_ids = db.get_notified_opportunity_ids(user_id)
+    if notified_ids:
+        before_count = len(new_opps)
+        new_opps = [opp for opp in new_opps if opp["id"] not in notified_ids]
+        if before_count != len(new_opps):
+            logger.info("通知済み除外: %d件 → %d件 (user=%s)", before_count, len(new_opps), user_id)
 
     if not new_opps:
         logger.info("新着マッチ案件なし: user=%s", user_id)
