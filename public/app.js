@@ -809,11 +809,17 @@ function renderOpportunities(items) {
           </div>
           <div class="opp-card__analysis hidden" id="analysis-${escapeHtml(oppId)}"></div>`;
     } else {
-      // 無料ユーザー: ロック表示
-      cardHtml += `<div class="card__locked">
-            <p>予算・要件・連絡先・AI分析は有料プランで閲覧できます</p>
-            <button class="btn btn--primary btn--sm" onclick="switchTab('subscription')">プランを見る</button>
-          </div>`;
+      // 無料ユーザー: カード全体をぼかし表示
+      if (budgetStr) cardHtml += `<div class="opp-card__meta">予算: ${escapeHtml(budgetStr)}</div>`;
+      if (summaryText) cardHtml += `<div class="opp-card__summary">${escapeHtml(summaryText)}</div>`;
+      cardHtml += `</div></div>`;
+      return `<div class="opp-card-blur-wrapper">
+  <div style="filter:blur(5px);pointer-events:none;">${cardHtml}</div>
+  <div class="opp-card-blur-overlay">
+    <p>有料プランで案件の詳細を閲覧できます</p>
+    <button class="btn btn--primary btn--sm" onclick="switchTab('subscription')">プランを見る</button>
+  </div>
+</div>`;
     }
 
     cardHtml += `</div></div>`;

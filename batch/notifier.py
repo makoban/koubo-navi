@@ -1,10 +1,10 @@
-"""公募ナビAI - メール通知モジュール v3.3（Resend API）
+"""公募ナビAI - メール通知モジュール v3.4（Resend API）
 
 業種カテゴリマッチの新着案件を通知。
-各案件のAI詳細分析を生成 or キャッシュ取得し、メールにインライン表示。
+案件の基本情報のみをシンプルに表示（AI分析なし）。
+無料ユーザー（tier="free"）はメール送信をスキップ。
 """
 
-import json
 import logging
 from datetime import datetime, timezone
 
@@ -12,7 +12,6 @@ import requests
 
 import config
 import db
-from gemini_client import call_gemini, parse_json_response
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +23,12 @@ def notify_user(user: dict) -> int:
         通知した案件数。
     """
     user_id = user["id"]
+
+    # ティア判定: 無料ユーザーはメール送信をスキップ
+    tier = db.get_user_tier(user)
+    if tier == "free":
+        logger.info("無料ユーザーのためメール通知スキップ: %s", user_id)
+        return 0
 
     # ユーザーの業種カテゴリを取得
     industry_cats = db.get_user_industry_categories(user_id)
@@ -60,103 +65,33 @@ def notify_user(user: dict) -> int:
         return 0
     logger.info("新着マッチ案件: %d件 (user=%s)", len(new_opps), user_id)
 
-    # ティア判定
-    tier = db.get_user_tier(user)
-    max_in_email = 20 if tier == "paid" else 5
+    # 有料ユーザーは最大20件
+    max_in_email = 20
+    opps_to_send = new_opps[:max_in_email]
 
-    # プロフィール取得（AI分析用）
-    profile = db.get_user_profile(user_id)
-    if not profile:
-        logger.warning("プロフィール未設定: %s", user_id)
-        return 0
-
-    # 各案件のAI詳細分析を生成 or キャッシュ取得
-    analyzed_opps = []
-    for opp in new_opps[:max_in_email]:
-        try:
-            analysis = db.get_cached_analysis(user_id, opp["id"])
-            if not analysis:
-                analysis = _generate_analysis(profile, opp)
-                if analysis:
-                    db.save_detailed_analysis(user_id, opp["id"], analysis)
-            analyzed_opps.append({"opportunity": opp, "analysis": analysis})
-        except Exception as exc:
-            # 分析失敗は見落とさないよう warning レベルで記録
-            logger.warning("分析失敗 %s: %s", opp["id"], exc)
-            analyzed_opps.append({"opportunity": opp, "analysis": None})
-
-    if not analyzed_opps:
+    if not opps_to_send:
         return 0
 
     # メール送信
-    success = _send_notification(user, analyzed_opps, tier=tier, total_count=len(new_opps))
+    success = _send_notification(user, opps_to_send, total_count=len(new_opps))
 
     if success:
-        _log_notification(user_id, len(analyzed_opps), "sent")
-        logger.info("通知完了: user=%s, %d件送信", user_id, len(analyzed_opps))
+        _log_notification(user_id, len(opps_to_send), "sent")
+        logger.info("通知完了: user=%s, %d件送信", user_id, len(opps_to_send))
         # 通知済みフラグを更新（送信成功後のみ）
-        notified_ids = [
-            item["opportunity"]["id"]
-            for item in analyzed_opps
-            if item.get("opportunity", {}).get("id")
-        ]
-        if notified_ids:
-            db.mark_as_notified(user_id, notified_ids)
+        sent_ids = [opp["id"] for opp in opps_to_send if opp.get("id")]
+        if sent_ids:
+            db.mark_as_notified(user_id, sent_ids)
     else:
-        _log_notification(user_id, len(analyzed_opps), "failed")
-        logger.error("通知失敗: user=%s, %d件のメール送信に失敗", user_id, len(analyzed_opps))
+        _log_notification(user_id, len(opps_to_send), "failed")
+        logger.error("通知失敗: user=%s, %d件のメール送信に失敗", user_id, len(opps_to_send))
 
-    return len(analyzed_opps) if success else 0
-
-
-def _generate_analysis(profile: dict, opp: dict) -> dict | None:
-    """案件のAI詳細分析をGeminiで生成する。"""
-    prompt = f"""あなたは公募案件と企業のマッチング分析の専門家です。
-以下の案件情報と企業プロフィールを照らし合わせて、詳細な分析をJSON形式で出力してください。
-
-【案件情報】
-タイトル: {opp.get('title') or '不明'}
-カテゴリ: {opp.get('category') or '不明'}
-発注機関: {opp.get('organization') or '不明'}
-業種: {opp.get('industry_category') or '不明'}
-締切: {opp.get('deadline') or '不明'}
-予算: {opp.get('budget') or '不明'}
-要約: {opp.get('detailed_summary') or opp.get('summary') or '不明'}
-
-【企業プロフィール】
-会社名: {profile.get('company_name', '不明')}
-事業分野: {', '.join(profile.get('business_areas', []))}
-サービス: {', '.join(profile.get('services', []))}
-強み: {', '.join(profile.get('strengths', []))}
-
-出力:
-{{
-  "summary": "総合評価（150文字程度）",
-  "match_points": ["マッチポイント1", "ポイント2", "ポイント3"],
-  "concerns": ["懸念点1", "懸念点2"],
-  "actions": ["アクション1", "アクション2", "アクション3"]
-}}"""
-
-    import time as _time
-    for _try in range(2):
-        try:
-            response = call_gemini(prompt, json_mode=True, max_tokens=2048)
-            result = parse_json_response(response)
-            if isinstance(result, dict):
-                return result
-        except Exception as exc:
-            if _try == 0:
-                logger.debug("Gemini分析JSONパース失敗、リトライ: %s", exc)
-                _time.sleep(3)
-            else:
-                logger.warning("Gemini分析2回失敗: %s", exc)
-    return None
+    return len(opps_to_send) if success else 0
 
 
 def _send_notification(
     user: dict,
-    analyzed_opps: list[dict],
-    tier: str = "free",
+    opps: list[dict],
     total_count: int = 0,
 ) -> bool:
     """メール送信。"""
@@ -170,8 +105,8 @@ def _send_notification(
         logger.warning("RESEND_API_KEY 未設定のため通知スキップ")
         return False
 
-    html_body = _build_email_html(analyzed_opps, tier=tier, total_count=total_count)
-    subject = f"【公募ナビAI】本日の新着案件 {len(analyzed_opps)}件"
+    html_body = _build_email_html(opps, total_count=total_count)
+    subject = f"【公募ナビAI】本日の新着案件 {len(opps)}件"
 
     try:
         resp = requests.post(
@@ -191,7 +126,7 @@ def _send_notification(
         if not resp.ok:
             logger.error("Resend API エラー: status=%d body=%s", resp.status_code, resp.text[:500])
         resp.raise_for_status()
-        logger.info("メール送信成功: %s (%d件)", email, len(analyzed_opps))
+        logger.info("メール送信成功: %s (%d件)", email, len(opps))
         return True
     except Exception as exc:
         logger.error("メール送信失敗: %s: %s", email, exc)
@@ -228,16 +163,12 @@ def _log_notification(user_id: str, count: int, status: str):
 
 
 def _build_email_html(
-    analyzed_opps: list[dict],
-    tier: str = "free",
+    opps: list[dict],
     total_count: int = 0,
 ) -> str:
-    """新着案件 + AI詳細分析のHTMLメールを生成する。"""
+    """新着案件の基本情報のみのHTMLメールを生成する（AI分析なし）。"""
     rows = []
-    for item in analyzed_opps:
-        opp = item.get("opportunity", {})
-        analysis = item.get("analysis") or {}
-
+    for opp in opps:
         title = opp.get("title") or "不明"
         org = opp.get("organization") or "不明"
         category = opp.get("industry_category") or opp.get("category") or ""
@@ -246,12 +177,6 @@ def _build_email_html(
         difficulty = opp.get("difficulty") or ""
         summary = opp.get("detailed_summary") or opp.get("summary") or ""
         detail_url = opp.get("detail_url", "")
-
-        # AI分析結果
-        ai_summary = analysis.get("summary", "")
-        match_points = analysis.get("match_points", [])
-        concerns = analysis.get("concerns", [])
-        actions = analysis.get("actions", [])
 
         # 業種カテゴリバッジ色
         cat_color = "#c9a96e"
@@ -266,30 +191,6 @@ def _build_email_html(
         if detail_url:
             link_html = f'<a href="{detail_url}" style="color:#c9a96e;font-size:13px;">詳細ページ →</a>'
 
-        # AI分析セクション
-        ai_html = ""
-        if ai_summary:
-            ai_html += f'<div style="margin-top:10px;padding:10px;background:rgba(0,0,0,0.2);border-radius:6px;border-left:3px solid #c9a96e;">'
-            ai_html += f'<div style="font-size:13px;color:#f1f5f9;line-height:1.7;margin-bottom:8px;">{ai_summary}</div>'
-
-            if match_points:
-                ai_html += '<div style="margin-bottom:6px;">'
-                for pt in match_points[:3]:
-                    ai_html += f'<div style="font-size:12px;color:#4ade80;line-height:1.6;">✓ {pt}</div>'
-                ai_html += '</div>'
-
-            if concerns:
-                for c in concerns[:2]:
-                    ai_html += f'<div style="font-size:12px;color:#fbbf24;line-height:1.6;">⚠ {c}</div>'
-
-            if actions:
-                ai_html += '<div style="margin-top:6px;">'
-                for i, a in enumerate(actions[:3], 1):
-                    ai_html += f'<div style="font-size:12px;color:#94a3b8;line-height:1.6;">{i}. {a}</div>'
-                ai_html += '</div>'
-
-            ai_html += '</div>'
-
         rows.append(f"""
         <tr>
           <td style="padding:16px;border-bottom:1px solid #333;">
@@ -302,27 +203,9 @@ def _build_email_html(
               {f'<span style="color:#4ade80;">{budget}</span>' if budget else ''}
             </div>
             {f'<div style="margin-top:6px;font-size:13px;color:#cbd5e1;line-height:1.6;">{summary[:150]}</div>' if summary else ''}
-            {ai_html}
             {f'<div style="margin-top:8px;">{link_html}</div>' if link_html else ''}
           </td>
         </tr>""")
-
-    # 無料ユーザー向けアップグレードCTA
-    upgrade_html = ""
-    if tier == "free" and total_count > len(analyzed_opps):
-        remaining = total_count - len(analyzed_opps)
-        upgrade_html = f"""
-    <div style="background:#1a1f35;border-radius:8px;padding:20px;text-align:center;margin-top:16px;border:1px solid #c9a96e33;">
-      <p style="color:#c9a96e;font-size:14px;font-weight:bold;margin:0 0 8px;">
-        他に {remaining}件 の業種マッチ案件があります
-      </p>
-      <p style="color:#94a3b8;font-size:13px;margin:0 0 12px;">
-        有料プランなら最大20件の新着案件をメールで受け取れます
-      </p>
-      <a href="https://koubo-navi.bantex.jp?upgrade=1" style="display:inline-block;background:#c9a96e;color:#0a0e1a;padding:10px 24px;border-radius:8px;font-weight:bold;text-decoration:none;font-size:13px;">
-        プランをアップグレード
-      </a>
-    </div>"""
 
     today = datetime.now(timezone.utc).strftime("%Y年%m月%d日")
 
@@ -333,15 +216,13 @@ def _build_email_html(
   <div style="max-width:600px;margin:0 auto;padding:24px;">
     <div style="text-align:center;margin-bottom:24px;">
       <h1 style="color:#c9a96e;font-size:22px;margin:0;">公募ナビAI</h1>
-      <p style="color:#f1f5f9;font-size:16px;font-weight:bold;margin:12px 0 4px;">本日の新着案件 {len(analyzed_opps)}件</p>
+      <p style="color:#f1f5f9;font-size:16px;font-weight:bold;margin:12px 0 4px;">本日の新着案件 {len(opps)}件</p>
       <p style="color:#94a3b8;font-size:13px;margin:0;">{today} / 業種マッチ</p>
     </div>
 
     <table style="width:100%;border-collapse:collapse;background:#1a1f35;border-radius:8px;overflow:hidden;">
       {''.join(rows)}
     </table>
-
-    {upgrade_html}
 
     <div style="text-align:center;margin-top:24px;">
       <a href="https://koubo-navi.bantex.jp" style="display:inline-block;background:#c9a96e;color:#0a0e1a;padding:12px 32px;border-radius:8px;font-weight:bold;text-decoration:none;font-size:15px;">
@@ -350,7 +231,7 @@ def _build_email_html(
     </div>
 
     <div style="text-align:center;margin-top:32px;color:#64748b;font-size:11px;">
-      <p>公募ナビAI v3.3 by bantex</p>
+      <p>公募ナビAI v3.4 by bantex</p>
       <p>通知設定はダッシュボードから変更できます</p>
     </div>
   </div>
