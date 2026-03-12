@@ -12,6 +12,7 @@ import time
 import requests
 
 import config
+from categories import VALID_CATEGORIES, CATEGORY_DEFINITIONS, CLASSIFICATION_RULES
 from gemini_client import call_gemini, parse_json_response
 from scraper import fetch_page, extract_text
 
@@ -94,6 +95,7 @@ def enrich_batch(
 def _extract_details(text: str, opp: dict) -> dict | None:
     """Geminiで詳細ページのテキストから構造化データを抽出する。"""
     title = opp.get("title", "")
+    source_category = opp.get("category") or ""
 
     # テキストが長すぎる場合は切り詰め（トークン節約）
     if len(text) > 15000:
@@ -101,6 +103,7 @@ def _extract_details(text: str, opp: dict) -> dict | None:
 
     prompt = f"""以下は公募・入札案件の詳細ページのテキストです。
 案件名: {title}
+ソースカテゴリ: {source_category or "なし"}
 
 このページから以下の情報を抽出してJSON形式で返してください。
 見つからない項目はnullとしてください。
@@ -116,8 +119,12 @@ def _extract_details(text: str, opp: dict) -> dict | None:
   "contact_info": "問い合わせ先の部署名・電話番号・メールアドレス（50文字以内で要約）",
   "detailed_summary": "この案件の具体的な業務内容を200文字以内で要約",
   "difficulty": "この案件の参入難易度を判定（高/中/低）。判定基準: 高=特殊資格・大規模実績必須、中=一般的な資格・実績で可、低=資格不要・小規模",
-  "industry_category": "以下の10カテゴリから最も適切なものを1つ選択: IT・DX / 建設・土木 / コンサル・調査 / 広告・クリエイティブ / 設備・物品 / 清掃・管理 / 医療・福祉 / 教育・研修 / 環境・エネルギー / その他"
+  "industry_category": "以下のカテゴリ定義に基づき最も適切なものを1つ選択"
 }}
+
+{CATEGORY_DEFINITIONS}
+
+{CLASSIFICATION_RULES}
 
 ページテキスト:
 {text}"""
@@ -153,12 +160,7 @@ def _extract_details(text: str, opp: dict) -> dict | None:
             result["difficulty"] = None
 
         # industry_category バリデーション
-        valid_categories = (
-            "IT・DX", "建設・土木", "コンサル・調査", "広告・クリエイティブ",
-            "設備・物品", "清掃・管理", "医療・福祉", "教育・研修",
-            "環境・エネルギー", "その他",
-        )
-        if result.get("industry_category") not in valid_categories:
+        if result.get("industry_category") not in VALID_CATEGORIES:
             result["industry_category"] = "その他"
 
         # テキストフィールドの長さ制限

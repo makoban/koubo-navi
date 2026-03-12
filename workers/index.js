@@ -493,9 +493,11 @@ async function handleGetOpportunities(request, env) {
   let queryPath = `/opportunities?area_id=in.(${areaFilter})&select=*&order=${orderClause}&limit=${requestedLimit}`;
 
   // 業種カテゴリフィルター（ユーザーの業種 or URL指定の業種）
+  // 「その他」は全ユーザーに表示（分類不能な案件を取りこぼさない）
   const filterCategories = industryFilter ? [industryFilter] : userIndustries;
   if (filterCategories.length > 0) {
-    const catFilter = filterCategories.map(c => encodeURIComponent(c)).join(",");
+    const catsWithSonota = filterCategories.includes("その他") ? filterCategories : [...filterCategories, "その他"];
+    const catFilter = catsWithSonota.map(c => encodeURIComponent(c)).join(",");
     queryPath = `/opportunities?area_id=in.(${areaFilter})&industry_category=in.(${catFilter})&select=*&order=${orderClause}&limit=${requestedLimit}`;
   }
 

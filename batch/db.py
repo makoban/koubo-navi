@@ -191,6 +191,28 @@ def upsert_opportunities(opportunities: list[dict], area_id: str, source_id: str
     return []
 
 
+def touch_opportunities_by_source(source_id: str):
+    """ソースIDに属する案件の scraped_at を現在時刻に更新する。
+
+    コンテンツハッシュ一致で Gemini スキップした場合でも、
+    既存案件が通知ウィンドウ内に留まるようにする。
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        resp = requests.patch(
+            _url(f"/opportunities?source_id=eq.{source_id}"),
+            headers=_headers("return=minimal"),
+            json={"scraped_at": now},
+            timeout=30,
+        )
+        if resp.ok:
+            logger.info("scraped_at更新: source=%s", source_id)
+        else:
+            logger.warning("scraped_at更新失敗: source=%s status=%d", source_id, resp.status_code)
+    except Exception as exc:
+        logger.warning("scraped_at更新例外: source=%s: %s", source_id, exc)
+
+
 # --- Opportunity Detail Enrichment ---
 
 def get_unenriched_opportunities(limit: int = 500) -> list[dict]:
@@ -256,7 +278,11 @@ def get_new_opportunities_by_industry(
     from datetime import timedelta
 
     since = (datetime.now(timezone.utc) - timedelta(hours=since_hours)).isoformat().replace("+00:00", "Z")
-    cat_filter = ",".join(quote(c, safe="") for c in industry_categories)
+    # 「その他」は全ユーザーに表示（分類不能な案件を取りこぼさない）
+    cats_with_sonota = list(industry_categories)
+    if "その他" not in cats_with_sonota:
+        cats_with_sonota.append("その他")
+    cat_filter = ",".join(quote(c, safe="") for c in cats_with_sonota)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     area_suffix = ""

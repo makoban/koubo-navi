@@ -13,7 +13,9 @@ import json
 import logging
 import sys
 
+import config  # .env を読み込む
 import db
+from categories import VALID_CATEGORIES, CATEGORY_DEFINITIONS, CLASSIFICATION_RULES
 from gemini_client import call_gemini, parse_json_response
 
 logging.basicConfig(
@@ -22,14 +24,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-VALID_CATEGORIES = (
-    "IT・DX", "建設・土木", "コンサル・調査", "広告・クリエイティブ",
-    "設備・物品", "清掃・管理", "医療・福祉", "教育・研修",
-    "環境・エネルギー", "その他",
-)
-
-CATEGORIES_STR = " / ".join(VALID_CATEGORIES)
-
 
 def get_unclassified_opportunities(limit: int = 50000) -> list[dict]:
     """industry_category が NULL の案件を取得する。"""
@@ -37,6 +31,23 @@ def get_unclassified_opportunities(limit: int = 50000) -> list[dict]:
     resp = requests.get(
         db._url(
             "/opportunities?industry_category=is.null"
+            "&select=id,title,summary,category"
+            f"&order=scraped_at.desc&limit={limit}"
+        ),
+        headers=db._headers(),
+        timeout=60,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def get_sonota_opportunities(limit: int = 50000) -> list[dict]:
+    """industry_category が「その他」の案件を取得する（再分類用）。"""
+    import requests
+    from urllib.parse import quote
+    resp = requests.get(
+        db._url(
+            f"/opportunities?industry_category=eq.{quote('その他')}"
             "&select=id,title,summary,category"
             f"&order=scraped_at.desc&limit={limit}"
         ),
@@ -63,9 +74,11 @@ def classify_batch(opps: list[dict]) -> dict[str, str]:
     opp_text = "\n".join(opp_lines)
 
     prompt = f"""以下は公募・入札案件のリストです。
-各案件を以下の10カテゴリのいずれか1つに分類してください。
+各案件を以下のカテゴリ定義に基づき、最も適切なカテゴリ1つに分類してください。
 
-カテゴリ: {CATEGORIES_STR}
+{CATEGORY_DEFINITIONS}
+
+{CLASSIFICATION_RULES}
 
 案件リスト:
 {opp_text}
@@ -106,11 +119,17 @@ def main():
     parser.add_argument("--limit", type=int, default=50000, help="処理件数上限")
     parser.add_argument("--batch-size", type=int, default=50, help="1バッチの件数")
     parser.add_argument("--delay", type=float, default=0.3, help="バッチ間の待機秒数")
+    parser.add_argument("--reclassify-sonota", action="store_true",
+                        help="「その他」に分類された案件を再分類")
     args = parser.parse_args()
 
-    logger.info("=== 業種カテゴリ分類 開始 (limit=%d, batch=%d) ===", args.limit, args.batch_size)
+    mode = "その他再分類" if args.reclassify_sonota else "NULL分類"
+    logger.info("=== 業種カテゴリ分類 開始 [%s] (limit=%d, batch=%d) ===", mode, args.limit, args.batch_size)
 
-    opps = get_unclassified_opportunities(limit=args.limit)
+    if args.reclassify_sonota:
+        opps = get_sonota_opportunities(limit=args.limit)
+    else:
+        opps = get_unclassified_opportunities(limit=args.limit)
     total = len(opps)
     if not opps:
         logger.info("対象案件なし。全件分類済みです。")

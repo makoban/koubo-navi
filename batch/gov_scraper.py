@@ -357,6 +357,9 @@ def _scrape_html(source: dict) -> list[dict]:
         stored_hash = _get_stored_hash(source)
         if content_hash == stored_hash:
             logger.info("  -> ページ変更なし (hash match), Geminiスキップ: %s", source_name)
+            # 既存案件の scraped_at を更新して通知ウィンドウ内に留める
+            import db
+            db.touch_opportunities_by_source(source.get("id", ""))
             return []
 
         opportunities = _extract_opportunities(text, source_name, source_url)
