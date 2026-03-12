@@ -91,33 +91,44 @@ def classify_batch(opps: list[dict]) -> dict[str, str]:
 
 全{len(opps)}件を出力してください。"""
 
-    try:
-        response = call_gemini(prompt, json_mode=True, max_tokens=4096)
-        results = parse_json_response(response)
+    import time as _time
+    for _try in range(2):
+        try:
+            response = call_gemini(prompt, json_mode=True, max_tokens=8192)
+            results = parse_json_response(response)
 
-        if not isinstance(results, list):
+            if not isinstance(results, list):
+                if _try == 0:
+                    logger.debug("非配列レスポンス、リトライ")
+                    _time.sleep(2)
+                    continue
+                return {}
+
+            mapping = {}
+            for r in results:
+                idx = r.get("index", 0) - 1
+                cat = r.get("category", "その他")
+                if 0 <= idx < len(opps):
+                    if cat not in VALID_CATEGORIES:
+                        cat = "その他"
+                    mapping[opps[idx]["id"]] = cat
+
+            return mapping
+
+        except Exception as exc:
+            if _try == 0:
+                logger.debug("分類バッチ失敗、リトライ: %s", exc)
+                _time.sleep(2)
+                continue
+            logger.warning("分類バッチ失敗: %s", exc)
             return {}
-
-        mapping = {}
-        for r in results:
-            idx = r.get("index", 0) - 1
-            cat = r.get("category", "その他")
-            if 0 <= idx < len(opps):
-                if cat not in VALID_CATEGORIES:
-                    cat = "その他"
-                mapping[opps[idx]["id"]] = cat
-
-        return mapping
-
-    except Exception as exc:
-        logger.warning("分類バッチ失敗: %s", exc)
-        return {}
+    return {}
 
 
 def main():
     parser = argparse.ArgumentParser(description="業種カテゴリ一括分類")
     parser.add_argument("--limit", type=int, default=50000, help="処理件数上限")
-    parser.add_argument("--batch-size", type=int, default=50, help="1バッチの件数")
+    parser.add_argument("--batch-size", type=int, default=20, help="1バッチの件数")
     parser.add_argument("--delay", type=float, default=0.3, help="バッチ間の待機秒数")
     parser.add_argument("--reclassify-sonota", action="store_true",
                         help="「その他」に分類された案件を再分類")
@@ -145,6 +156,7 @@ def main():
         logger.info("バッチ %d/%d (%d件)...", batch_idx, len(batches), len(batch))
 
         mapping = classify_batch(batch)
+        logger.info("  -> 分類結果: %d/%d件", len(mapping), len(batch))
         for opp_id, category in mapping.items():
             try:
                 db.update_industry_category(opp_id, category)

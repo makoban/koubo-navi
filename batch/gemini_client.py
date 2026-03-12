@@ -88,7 +88,13 @@ def parse_json_response(text: str):
             repaired = _repair_json(text)
             return json.loads(repaired)
         except json.JSONDecodeError:
-            # 最終手段: テキスト内の最初の { } ブロックを抽出
+            # 最終手段: テキスト内の最初の [...] or {...} ブロックを抽出
+            match = re.search(r"\[.*\]", text, re.DOTALL)
+            if match:
+                try:
+                    return json.loads(match.group())
+                except json.JSONDecodeError:
+                    pass
             match = re.search(r"\{.*\}", text, re.DOTALL)
             if match:
                 return json.loads(match.group())
