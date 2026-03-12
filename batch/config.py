@@ -26,7 +26,7 @@ SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL", "")
 
 # --- Scraping ---
 REQUEST_TIMEOUT = 30
-USER_AGENT = "KouboNavi/1.0 (bantex.jp; AI procurement matching)"
+USER_AGENT = "Mozilla/5.0 (compatible; KouboNavi/1.0; +https://bantex.jp)"
 MAX_TEXT_LENGTH = 30000
 
 # --- Matching ---
