@@ -822,6 +822,7 @@ br.sp-only { display: none; }
   padding: 100px 24px;
   text-align: center;
   position: relative;
+  overflow: hidden;
 }
 .cta::before {
   content: '';
