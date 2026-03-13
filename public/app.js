@@ -1,4 +1,4 @@
-// 公募ナビAI v3.5.1
+// 公募ナビAI v3.5.2
 // 新規登録フロー刷新: メールのみ登録 + パスワードメール送信 + オンボーディング廃止
 
 // ---------------------------------------------------------------------------
@@ -741,12 +741,33 @@ async function loadDashboard() {
     document.getElementById("dashAreas").textContent = userAreaNames.length > 0
       ? userAreaNames.join("、") : "未設定";
 
+    const industryCats = companyProfile?.industry_categories || [];
+    const hasOnlySonota = industryCats.length === 0 || (industryCats.length === 1 && industryCats[0] === "その他");
+
     if (companyProfile) {
       document.getElementById("dashBusiness").textContent =
         (companyProfile.business_areas || []).join("、") || "-";
       const indEl = document.getElementById("dashIndustries");
       if (indEl) {
-        indEl.textContent = (companyProfile.industry_categories || []).join("、") || "未設定";
+        indEl.textContent = industryCats.join("、") || "未設定";
+      }
+    }
+
+    // 業種またはエリア未設定の場合、設定を促すバナー表示
+    const setupBanner = document.getElementById("setupBanner");
+    if (setupBanner) {
+      if (hasOnlySonota || userAreaIds.length === 0) {
+        const msgs = [];
+        if (hasOnlySonota) msgs.push("業種カテゴリ");
+        if (userAreaIds.length === 0) msgs.push("エリア");
+        setupBanner.innerHTML = `
+          <div class="setup-banner">
+            <span>${msgs.join("・")}を設定すると、マッチする案件が表示されます。</span>
+            <button class="btn btn--primary btn--sm" onclick="switchTab('settings')">設定する</button>
+          </div>`;
+        setupBanner.classList.remove("hidden");
+      } else {
+        setupBanner.classList.add("hidden");
       }
     }
 
@@ -1024,11 +1045,35 @@ function loadSettings(profileData) {
       <button class="btn btn--outline btn--sm" onclick="startProfileEdit()" style="margin-top:12px;">プロフィールを編集</button>
     `;
   } else {
-    // プロフィール未設定 → 入力を促す
+    // プロフィール未設定 → 業種選択を直接表示
+    const currentCats = (p.industry_categories || []);
     settingsProfile.innerHTML = `
       <div class="settings-empty-profile">
-        <p style="color:var(--text-secondary);margin-bottom:12px;">事業プロフィールが未設定です。設定するとAIが業種にマッチする案件を自動でお届けします。</p>
-        <button class="btn btn--primary btn--sm" onclick="startProfileEdit()">プロフィールを設定する</button>
+        <p style="color:var(--text-secondary);margin-bottom:12px;">業種カテゴリを選択すると、マッチする案件が表示されます。</p>
+        <div style="margin-bottom:12px;">
+          <label class="input-label" style="margin-bottom:8px;display:block;">業種カテゴリ（1つ以上選択）</label>
+          <div id="quickIndustryCategories" style="display:flex;flex-wrap:wrap;gap:8px;">
+            ${ALL_INDUSTRY_CATEGORIES.map(cat => {
+              const checked = currentCats.includes(cat) ? "checked" : "";
+              return `<label style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text-secondary);cursor:pointer;">
+                <input type="checkbox" value="${escapeHtml(cat)}" ${checked} class="quick-industry-checkbox"> ${escapeHtml(cat)}
+              </label>`;
+            }).join("")}
+          </div>
+        </div>
+        <div style="margin-bottom:16px;">
+          <p style="color:var(--text-secondary);font-size:13px;margin-bottom:8px;">HPのURLを入力するとAIが業種を自動判定します（任意）</p>
+          <div style="display:flex;gap:8px;">
+            <input type="url" id="quickCompanyUrl" class="input input--sm" placeholder="https://example.co.jp" style="flex:1;">
+            <button class="btn btn--outline btn--sm" onclick="quickAnalyzeUrl()">AI判定</button>
+          </div>
+          <div id="quickAnalyzeStatus" class="status-msg hidden" style="margin-top:4px;font-size:12px;"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn--primary btn--sm" onclick="saveQuickIndustry()">業種を保存</button>
+          <button class="btn btn--outline btn--sm" onclick="startProfileEdit()">詳細を編集</button>
+        </div>
+        <div id="quickSaveStatus" class="status-msg hidden" style="margin-top:8px;"></div>
       </div>
     `;
   }
@@ -1301,12 +1346,81 @@ function _splitInput(val) {
   return val.split(/[、,，]/).map(s => s.trim()).filter(Boolean);
 }
 
+async function saveQuickIndustry() {
+  const cats = Array.from(document.querySelectorAll(".quick-industry-checkbox:checked")).map(cb => cb.value);
+  if (cats.length === 0) { alert("業種カテゴリを1つ以上選択してください"); return; }
+
+  const statusEl = document.getElementById("quickSaveStatus");
+  statusEl.textContent = "保存中...";
+  statusEl.classList.remove("hidden");
+  statusEl.style.color = "";
+
+  try {
+    const token = await getAccessToken();
+    const resp = await fetch(`${WORKER_BASE}/api/user/profile`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ industry_categories: cats }),
+    });
+    if (!resp.ok) throw new Error("保存に失敗しました");
+
+    companyProfile = { ...companyProfile, industry_categories: cats };
+    statusEl.textContent = "業種を保存しました";
+    statusEl.style.color = "var(--success)";
+    setTimeout(() => loadDashboard(), 800);
+  } catch (err) {
+    statusEl.textContent = `エラー: ${err.message}`;
+    statusEl.style.color = "var(--danger)";
+  }
+}
+
+async function quickAnalyzeUrl() {
+  const url = document.getElementById("quickCompanyUrl").value.trim();
+  if (!url) { alert("URLを入力してください"); return; }
+  const statusEl = document.getElementById("quickAnalyzeStatus");
+  statusEl.textContent = "AIが分析中...";
+  statusEl.classList.remove("hidden");
+  statusEl.style.color = "";
+
+  try {
+    const token = await getAccessToken();
+    const requestUrl = url.startsWith("http") ? url : "https://" + url;
+    const resp = await fetch(`${WORKER_BASE}/api/analyze-company`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ url: requestUrl }),
+    });
+    if (!resp.ok) throw new Error("分析に失敗しました");
+
+    const analyzed = await resp.json();
+    const cats = analyzed.industry_categories || [];
+
+    // チェックボックスを更新
+    document.querySelectorAll(".quick-industry-checkbox").forEach(cb => {
+      cb.checked = cats.includes(cb.value);
+    });
+
+    // プロフィール全体も保存
+    await fetch(`${WORKER_BASE}/api/user/profile`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ...analyzed, company_url: requestUrl }),
+    });
+    companyProfile = { ...companyProfile, ...analyzed };
+
+    statusEl.textContent = `判定完了: ${cats.join("、")}`;
+    statusEl.style.color = "var(--success)";
+  } catch (err) {
+    statusEl.textContent = `エラー: ${err.message}`;
+    statusEl.style.color = "var(--danger)";
+  }
+}
+
 async function saveProfileManual() {
   const companyName = document.getElementById("editCompanyName").value.trim();
-  if (!companyName) { alert("会社名を入力してください"); return; }
 
   const profileUpdate = {
-    company_name: companyName,
+    company_name: companyName || null,
     location: document.getElementById("editLocation").value.trim(),
     business_areas: _splitInput(document.getElementById("editBusinessAreas").value),
     services: _splitInput(document.getElementById("editServices").value),
