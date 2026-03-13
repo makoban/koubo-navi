@@ -134,7 +134,6 @@ function updateAuthUI() {
 
 function getCurrentPage() {
   if (!document.getElementById("dashboardPage").classList.contains("hidden")) return "dashboard";
-  if (!document.getElementById("onboardingPage").classList.contains("hidden")) return "onboarding";
   return "landing";
 }
 
@@ -651,8 +650,10 @@ async function registerAndGoToPayment() {
 
 async function startTrialCheckout() {
   const btn = document.getElementById("startTrialBtn");
-  btn.disabled = true;
-  btn.textContent = "処理中...";
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "処理中...";
+  }
 
   try {
     const token = await getAccessToken();
