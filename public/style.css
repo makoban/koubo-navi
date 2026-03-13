@@ -28,6 +28,8 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+html { overflow-x: hidden; }
+
 body {
   font-family: var(--font-body);
   background: var(--bg-primary);
@@ -36,6 +38,9 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
 }
+
+/* SP-only line breaks (hidden on desktop, shown on mobile) */
+br.sp-only { display: none; }
 
 .hidden { display: none !important; }
 
@@ -1628,9 +1633,12 @@ body {
 
 /* ====== Responsive ====== */
 @media (max-width: 768px) {
-  .hero__title { font-size: 28px; }
+  br.sp-only { display: inline; }
+  .hero__title { font-size: 26px; line-height: 1.5; }
+  .hero__subtitle { font-size: 15px; line-height: 1.8; max-width: 100%; }
   .hero { padding: 80px 20px 60px; }
   .hero__actions { flex-direction: column; gap: 12px; }
+  .hero__note { font-size: 12px; line-height: 1.6; }
   .steps__grid { grid-template-columns: 1fr; }
   .comparison__grid { flex-direction: column; }
   .comparison__arrow { transform: rotate(90deg); justify-content: center; }
@@ -1648,9 +1656,70 @@ body {
   .hero__usp-item { font-size: 13px; }
   .proof-bar__inner { flex-direction: column; gap: 28px; }
   .proof-bar__number { font-size: 28px; }
-  .section-title { font-size: 24px; }
+  .section-title { font-size: 22px; line-height: 1.5; }
+  .section-desc { font-size: 14px; line-height: 1.7; padding: 0 8px; }
   .mockup-opp__actions { flex-wrap: wrap; }
   .mockup__body { padding: 16px; }
+  .cta h2 { font-size: 22px; line-height: 1.5; }
+  .cta p { font-size: 14px; line-height: 1.7; }
+
+  /* 競合比較テーブル: スマホではカード形式に変換 */
+  .competitor { padding: 60px 16px; }
+  .competitor__wrapper { overflow-x: hidden; border: none; }
+  .competitor__table { min-width: 0; }
+  .competitor__table,
+  .competitor__table thead,
+  .competitor__table tbody,
+  .competitor__table tr,
+  .competitor__table th,
+  .competitor__table td { display: block; width: 100%; }
+  .competitor__table thead { display: none; }
+  .competitor__table tr {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 12px;
+    padding: 16px;
+  }
+  .competitor__table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    text-align: right;
+    border-bottom: 1px solid rgba(42,42,58,0.5);
+    white-space: normal;
+  }
+  .competitor__table td:last-child { border-bottom: none; }
+  .competitor__label {
+    display: block;
+    text-align: left !important;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent) !important;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--border-gold);
+  }
+  .competitor__label::before { display: none; }
+  .competitor__self { background: rgba(201,169,110,0.08); border-radius: 4px; padding: 8px 4px !important; }
+  /* 各tdにdata-labelで列名を表示 */
+  .competitor__table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 12px;
+    text-align: left;
+    flex-shrink: 0;
+    min-width: 80px;
+  }
+  .competitor__note { font-size: 12px; padding: 0 8px; }
+  .faq { padding: 60px 16px; }
+  .faq__item summary { font-size: 14px; }
+  .faq__item p { font-size: 13px; }
+  .pricing { padding: 60px 16px; }
+  .pricing__card { padding: 32px 24px; }
+  .pricing__price { font-size: 36px; }
 }
 
 /* ---------------------------------------------------------------------------

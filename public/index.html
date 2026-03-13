@@ -69,7 +69,7 @@
   </script>
   <title>公募ナビAI - 入札公募の巡回はもう不要。月3,980円でAIが毎朝お届け</title>
   <meta name="description" content="入札・公募サイトを自分で毎日探すのは終わり。AIが公募・入札情報を自動収集し、スコアで相性を判定。毎朝メール通知。月3,980円・7日間無料。">
-  <link rel="stylesheet" href="style.css?v=3.5.1">
+  <link rel="stylesheet" href="style.css?v=3.5.3">
   <!-- Supabase JS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
@@ -103,13 +103,13 @@
           <span>AIが <strong id="heroTotalChecked">--</strong> 件をチェック済み &mdash; いま <strong id="heroTotalActive">--</strong> 件が募集中</span>
         </div>
         <h1 class="hero__title">
-          入札・公募の巡回は、もう不要。<br>
-          <span class="hero__title-accent">月3,980円</span>でAIが毎朝お届け。
+          入札・公募の巡回は、<br class="sp-only">もう不要。<br>
+          <span class="hero__title-accent">月3,980円</span>で<br class="sp-only">AIが毎朝お届け。
         </h1>
         <p class="hero__subtitle">
           URL入力だけで準備完了。<br>
-          AIが全国の公募・入札を自動収集し、<br>
-          スコアで相性を判定。毎朝メールで届きます。
+          AIが全国の公募・入札を<br class="sp-only">自動収集し、スコアで相性を判定。<br>
+          毎朝メールで届きます。
         </p>
         <div class="hero__usp">
           <span class="hero__usp-item">&#x2713; 他社比 最大1/20の価格</span>
@@ -205,8 +205,8 @@
 
     <!-- 3 Steps -->
     <section class="steps" id="steps">
-      <h2 class="section-title">設定は3分。あとは毎朝届くだけ</h2>
-      <p class="section-desc">メールアドレスだけで即開始。あとはAIにおまかせ</p>
+      <h2 class="section-title">設定は3分。<br class="sp-only">あとは毎朝届くだけ</h2>
+      <p class="section-desc">メールアドレスだけで即開始。<br class="sp-only">あとはAIにおまかせ</p>
       <div class="section-divider"></div>
       <div class="steps__grid">
         <div class="step-card">
@@ -233,8 +233,8 @@
 
     <!-- Before / After -->
     <section class="comparison" id="comparison">
-      <h2 class="section-title">毎日の入札・公募サイト巡回、まだ続けますか？</h2>
-      <p class="section-desc">1日30分の手作業 vs AIに完全おまかせ</p>
+      <h2 class="section-title">毎日の入札・公募サイト巡回、<br class="sp-only">まだ続けますか？</h2>
+      <p class="section-desc">1日30分の手作業 vs<br class="sp-only"> AIに完全おまかせ</p>
       <div class="section-divider"></div>
       <div class="comparison__grid">
         <div class="comparison__card comparison__card--before">
@@ -281,75 +281,75 @@
           <tbody>
             <tr>
               <td class="competitor__label">月額料金</td>
-              <td class="competitor__self"><strong>&#165;3,980</strong></td>
-              <td>&#165;64,000〜</td>
-              <td>&#165;22,000</td>
-              <td>&#165;8,709〜</td>
-              <td>&#165;8,000〜</td>
+              <td class="competitor__self" data-label="公募ナビAI"><strong>&#165;3,980</strong></td>
+              <td data-label="NJSS">&#165;64,000〜</td>
+              <td data-label="bJAMP">&#165;22,000</td>
+              <td data-label="入札王">&#165;8,709〜</td>
+              <td data-label="nSearch">&#165;8,000〜</td>
             </tr>
             <tr>
               <td class="competitor__label">初期費用</td>
-              <td class="competitor__self"><strong>無料</strong></td>
-              <td>約30万円</td>
-              <td>無料</td>
-              <td>無料</td>
-              <td>不明</td>
+              <td class="competitor__self" data-label="公募ナビAI"><strong>無料</strong></td>
+              <td data-label="NJSS">約30万円</td>
+              <td data-label="bJAMP">無料</td>
+              <td data-label="入札王">無料</td>
+              <td data-label="nSearch">不明</td>
             </tr>
             <tr>
               <td class="competitor__label">AIマッチング</td>
-              <td class="competitor__self"><span class="competitor__check">&#x2714;</span></td>
-              <td><span class="competitor__check">&#x2714;</span></td>
-              <td><span class="competitor__check">&#x2714;</span></td>
-              <td><span class="competitor__cross">&#x2716;</span></td>
-              <td><span class="competitor__cross">&#x2716;</span></td>
+              <td class="competitor__self" data-label="公募ナビAI"><span class="competitor__check">&#x2714;</span></td>
+              <td data-label="NJSS"><span class="competitor__check">&#x2714;</span></td>
+              <td data-label="bJAMP"><span class="competitor__check">&#x2714;</span></td>
+              <td data-label="入札王"><span class="competitor__cross">&#x2716;</span></td>
+              <td data-label="nSearch"><span class="competitor__cross">&#x2716;</span></td>
             </tr>
             <tr>
-              <td class="competitor__label">URLかテキストで即開始</td>
-              <td class="competitor__self"><span class="competitor__check">&#x2714;</span></td>
-              <td><span class="competitor__cross">&#x2716;</span></td>
-              <td><span class="competitor__cross">&#x2716;</span></td>
-              <td><span class="competitor__cross">&#x2716;</span></td>
-              <td><span class="competitor__cross">&#x2716;</span></td>
+              <td class="competitor__label">URLで即開始</td>
+              <td class="competitor__self" data-label="公募ナビAI"><span class="competitor__check">&#x2714;</span></td>
+              <td data-label="NJSS"><span class="competitor__cross">&#x2716;</span></td>
+              <td data-label="bJAMP"><span class="competitor__cross">&#x2716;</span></td>
+              <td data-label="入札王"><span class="competitor__cross">&#x2716;</span></td>
+              <td data-label="nSearch"><span class="competitor__cross">&#x2716;</span></td>
             </tr>
             <tr>
               <td class="competitor__label">初期設定の手間</td>
-              <td class="competitor__self"><strong>不要</strong></td>
-              <td>キーワード設定</td>
-              <td>企業情報登録</td>
-              <td>都道府県・業種設定</td>
-              <td>キーワード設定</td>
+              <td class="competitor__self" data-label="公募ナビAI"><strong>不要</strong></td>
+              <td data-label="NJSS">キーワード設定</td>
+              <td data-label="bJAMP">企業情報登録</td>
+              <td data-label="入札王">都道府県・業種設定</td>
+              <td data-label="nSearch">キーワード設定</td>
             </tr>
             <tr>
               <td class="competitor__label">無料トライアル</td>
-              <td class="competitor__self"><strong>7日間</strong></td>
-              <td>8日間</td>
-              <td>月末まで</td>
-              <td>10日間</td>
-              <td>14日間</td>
+              <td class="competitor__self" data-label="公募ナビAI"><strong>7日間</strong></td>
+              <td data-label="NJSS">8日間</td>
+              <td data-label="bJAMP">月末まで</td>
+              <td data-label="入札王">10日間</td>
+              <td data-label="nSearch">14日間</td>
             </tr>
             <tr>
               <td class="competitor__label">メール通知</td>
-              <td class="competitor__self"><span class="competitor__check">&#x2714;</span></td>
-              <td><span class="competitor__check">&#x2714;</span></td>
-              <td><span class="competitor__check">&#x2714;</span></td>
-              <td><span class="competitor__check">&#x2714;</span></td>
-              <td><span class="competitor__check">&#x2714;</span></td>
+              <td class="competitor__self" data-label="公募ナビAI"><span class="competitor__check">&#x2714;</span></td>
+              <td data-label="NJSS"><span class="competitor__check">&#x2714;</span></td>
+              <td data-label="bJAMP"><span class="competitor__check">&#x2714;</span></td>
+              <td data-label="入札王"><span class="competitor__check">&#x2714;</span></td>
+              <td data-label="nSearch"><span class="competitor__check">&#x2714;</span></td>
             </tr>
             <tr>
               <td class="competitor__label">マッチスコア表示</td>
-              <td class="competitor__self"><span class="competitor__check">&#x2714;</span></td>
-              <td><span class="competitor__cross">&#x2716;</span></td>
-              <td>3段階評価</td>
-              <td><span class="competitor__cross">&#x2716;</span></td>
-              <td><span class="competitor__cross">&#x2716;</span></td>
+              <td class="competitor__self" data-label="公募ナビAI"><span class="competitor__check">&#x2714;</span></td>
+              <td data-label="NJSS"><span class="competitor__cross">&#x2716;</span></td>
+              <td data-label="bJAMP">3段階評価</td>
+              <td data-label="入札王"><span class="competitor__cross">&#x2716;</span></td>
+              <td data-label="nSearch"><span class="competitor__cross">&#x2716;</span></td>
             </tr>
             <tr>
               <td class="competitor__label">AI詳細分析</td>
-              <td class="competitor__self"><span class="competitor__check">&#x2714;</span></td>
-              <td><span class="competitor__cross">&#x2716;</span></td>
-              <td><span class="competitor__cross">&#x2716;</span></td>
-              <td><span class="competitor__cross">&#x2716;</span></td>
-              <td><span class="competitor__cross">&#x2716;</span></td>
+              <td class="competitor__self" data-label="公募ナビAI"><span class="competitor__check">&#x2714;</span></td>
+              <td data-label="NJSS"><span class="competitor__cross">&#x2716;</span></td>
+              <td data-label="bJAMP"><span class="competitor__cross">&#x2716;</span></td>
+              <td data-label="入札王"><span class="competitor__cross">&#x2716;</span></td>
+              <td data-label="nSearch"><span class="competitor__cross">&#x2716;</span></td>
             </tr>
           </tbody>
         </table>
@@ -359,8 +359,8 @@
 
     <!-- Match Score Detail -->
     <section class="sample-section" id="sample-section">
-      <h2 class="section-title">AIが「この案件、御社に合います」と判定</h2>
-      <p class="section-desc">業種カテゴリで自動マッチ。気になる案件はワンクリックでAI詳細分析</p>
+      <h2 class="section-title">AIが「この案件、<br class="sp-only">御社に合います」と判定</h2>
+      <p class="section-desc">業種カテゴリで自動マッチ。<br class="sp-only">気になる案件はワンクリックで<br class="sp-only">AI詳細分析</p>
       <div class="section-divider"></div>
       <div class="sample-cards">
         <div class="sample-card">
@@ -383,8 +383,8 @@
 
     <!-- Pricing -->
     <section class="pricing" id="pricing">
-      <h2 class="section-title">月3,980円。ランチ1回分で案件発見を自動化</h2>
-      <p class="section-desc">他社の最大1/20の価格。それでいてAI搭載</p>
+      <h2 class="section-title">月3,980円。<br class="sp-only">ランチ1回分で<br class="sp-only">案件発見を自動化</h2>
+      <p class="section-desc">他社の最大1/20の価格。<br class="sp-only">それでいてAI搭載</p>
       <div class="section-divider"></div>
       <div class="pricing__grid">
         <div class="pricing__card">
@@ -445,8 +445,8 @@
 
     <!-- CTA -->
     <section class="cta" id="cta">
-      <h2>入札・公募サイトを自分で探す日々は、今日で終わり</h2>
-      <p>URL入力だけで準備完了。7日間無料でAIの実力をお確かめください。</p>
+      <h2>入札・公募サイトを<br class="sp-only">自分で探す日々は、<br class="sp-only">今日で終わり</h2>
+      <p>URL入力だけで準備完了。<br class="sp-only">7日間無料でAIの実力を<br class="sp-only">お確かめください。</p>
       <button class="btn btn--primary btn--lg" onclick="ctaStartOnboarding()">無料で始める</button>
     </section>
 
@@ -669,7 +669,7 @@
     <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.48 2 2 5.83 2 10.5c0 4.08 3.42 7.5 8.05 8.32.31.07.74.21.85.48.1.25.06.63.03.88l-.14.82c-.04.25-.2.97.85.53s5.61-3.3 7.66-5.65C21.13 13.87 22 12.25 22 10.5 22 5.83 17.52 2 12 2z"/></svg>
   </a>
 
-  <script src="app.js?v=3.5.1"></script>
+  <script src="app.js?v=3.5.3"></script>
   <script>
   (function(){
     var sid = localStorage.getItem('_bx_sid');
