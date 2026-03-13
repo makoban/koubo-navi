@@ -69,7 +69,7 @@
   </script>
   <title>公募ナビAI - 入札公募の巡回はもう不要。月3,980円でAIが毎朝お届け</title>
   <meta name="description" content="入札・公募サイトを自分で毎日探すのは終わり。AIが公募・入札情報を自動収集し、スコアで相性を判定。毎朝メール通知。月3,980円・7日間無料。">
-  <link rel="stylesheet" href="style.css?v=3.2">
+  <link rel="stylesheet" href="style.css?v=3.5">
   <!-- Supabase JS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
@@ -82,7 +82,7 @@
       <div class="header__logo">
         <span class="header__icon">&#x1f4cb;</span>
         <span class="header__title">公募ナビAI</span>
-        <div class="header__badge">v3.3</div>
+        <div class="header__badge">v3.5</div>
       </div>
       <div class="header__actions" id="authArea">
         <button class="btn btn--outline btn--sm" id="loginBtn" onclick="showLoginModal()">ログイン</button>
@@ -120,7 +120,7 @@
           <button class="btn btn--primary btn--lg" onclick="ctaStartOnboarding()">無料で始める（7日間）</button>
           <a href="#service-sample" class="btn btn--outline btn--lg">サンプルを見る</a>
         </div>
-        <p class="hero__note">7日間無料トライアル / 途中解約可 / クレカ不要</p>
+        <p class="hero__note">7日間無料トライアル / 途中解約可 / メールアドレスだけで即開始</p>
       </div>
     </section>
 
@@ -206,20 +206,20 @@
     <!-- 3 Steps -->
     <section class="steps" id="steps">
       <h2 class="section-title">設定は3分。あとは毎朝届くだけ</h2>
-      <p class="section-desc">キーワード設定や業種登録は不要。URLを入れたらAIが全部やります</p>
+      <p class="section-desc">メールアドレスだけで即開始。あとはAIにおまかせ</p>
       <div class="section-divider"></div>
       <div class="steps__grid">
         <div class="step-card">
           <div class="step-card__number">1</div>
-          <div class="step-card__icon">&#x1F310;</div>
-          <h3>事業内容を入力</h3>
-          <p>自社ウェブサイトのURLまたは事業内容テキストを入力。キーワードや業種の手動設定は不要です。</p>
+          <div class="step-card__icon">&#x1F4E7;</div>
+          <h3>メールで登録</h3>
+          <p>メールアドレスを入力するだけ。パスワードは自動で発行されメールで届きます。</p>
         </div>
         <div class="step-card">
           <div class="step-card__number">2</div>
-          <div class="step-card__icon">&#x1F916;</div>
-          <h3>AIが事業内容を解析</h3>
-          <p>AIがウェブサイトを読み取り、事業内容・強み・対応可能な案件タイプを自動で判定。チェックしたいエリア（最大3つ）を選んで設定完了です。</p>
+          <div class="step-card__icon">&#x1F310;</div>
+          <h3>事業内容を設定</h3>
+          <p>ログイン後、設定画面でURLを入力するとAIが事業内容を自動解析。手動で業種を選ぶこともできます。エリア（最大3つ）を選んで完了。</p>
         </div>
         <div class="step-card">
           <div class="step-card__number">3</div>
@@ -422,7 +422,7 @@
         </details>
         <details class="faq__item">
           <summary>無料トライアル中に課金されますか？</summary>
-          <p>7日間は課金されません。トライアル開始時にクレジットカードの登録が必要ですが、期間中の請求はありません。トライアル終了の3日前にメールでお知らせしますので、継続しない場合はその前に解約してください。</p>
+          <p>7日間は課金されません。メールアドレスの登録だけですぐにお使いいただけます。有料プランへの切り替えはダッシュボードから行えます。</p>
         </details>
         <details class="faq__item">
           <summary>解約はいつでもできますか？</summary>
@@ -454,7 +454,7 @@
     <section class="line-support" id="line-support">
       <div class="line-support__inner">
         <div class="line-support__icon">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="#06C755"><path d="M12 2C6.48 2 2 5.83 2 10.5c0 4.08 3.42 7.5 8.05 8.32.31.07.74.21.85.48.1.25.06.63.03.88l-.14.82c-.04.25-.2.97.85.53s5.61-3.3 7.66-5.65C21.13 13.87 22 12.25 22 10.5 22 5.83 17.52 2 12 2zm-3.08 11.13H6.58c-.29 0-.52-.24-.52-.52V8.72c0-.29.24-.52.52-.52s.52.24.52.52v3.37h1.82c.29 0 .52.24.52.52s-.24.52-.52.52zm1.62-.52c0 .29-.24.52-.52.52s-.52-.24-.52-.52V8.72c0-.29.24-.52.52-.52s.52.24.52.52v3.89zm4.56 0a.52.52 0 0 1-.42.21.52.52 0 0 1-.42-.21l-2.52-3.42v3.42c0 .29-.24.52-.52.52s-.52-.24-.52-.52V8.72c0-.22.14-.42.34-.49a.52.52 0 0 1 .6.18l2.52 3.42V8.72c0-.29.24-.52.52-.52s.52.24.52.52v3.89zm2.94-2.34c.29 0 .52.24.52.52s-.24.52-.52.52h-1.82v1.3h1.82c.29 0 .52.24.52.52s-.24.52-.52.52h-2.34c-.29 0-.52-.24-.52-.52V8.72c0-.29.24-.52.52-.52h2.34c.29 0 .52.24.52.52s-.24.52-.52.52h-1.82v1.3h1.82z"/></svg>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="#06C755"><path d="M12 2C6.48 2 2 5.83 2 10.5c0 4.08 3.42 7.5 8.05 8.32.31.07.74.21.85.48.1.25.06.63.03.88l-.14.82c-.04.25-.2.97.85.53s5.61-3.3 7.66-5.65C21.13 13.87 22 12.25 22 10.5 22 5.83 17.52 2 12 2zm-3.08 11.13H6.58c-.29 0-.52-.24-.52-.52V8.72c0-.29.24-.52.52-.52s.52.24.52.52v3.57h1.82c.29 0 .52.24.52.52s-.24.52-.52.52zm1.62-.52c0 .29-.24.52-.52.52s-.52-.24-.52-.52V8.72c0-.29.24-.52.52-.52s.52.24.52.52v3.89zm4.56 0a.52.52 0 0 1-.42.21.52.52 0 0 1-.42-.21l-2.52-3.42v3.42c0 .29-.24.52-.52.52s-.52-.24-.52-.52V8.72c0-.22.14-.42.34-.49a.52.52 0 0 1 .6.18l2.52 3.42V8.72c0-.29.24-.52.52-.52s.52.24.52.52v3.89zm2.94-2.34c.29 0 .52.24.52.52s-.24.52-.52.52h-1.82v1.3h1.82c.29 0 .52.24.52.52s-.24.52-.52.52h-2.34c-.29 0-.52-.24-.52-.52V8.72c0-.29.24-.52.52-.52h2.34c.29 0 .52.24.52.52s-.24.52-.52.52h-1.82v1.3h1.82z"/></svg>
         </div>
         <div class="line-support__text">
           <p class="line-support__title">「うちの業種でも案件ある？」LINEでお気軽にどうぞ</p>
@@ -468,98 +468,7 @@
     </section>
   </main>
 
-  <!-- ============================================================ -->
-  <!-- Onboarding Flow (multi-step wizard) -->
-  <!-- ============================================================ -->
-  <main id="onboardingPage" class="hidden">
-    <div class="onboarding">
-      <div class="onboarding__progress">
-        <div class="onboarding__step active" data-step="1">
-          <span class="onboarding__step-num">1</span>
-          <span>事業内容</span>
-        </div>
-        <div class="onboarding__step" data-step="2">
-          <span class="onboarding__step-num">2</span>
-          <span>エリア選択</span>
-        </div>
-        <div class="onboarding__step" data-step="3">
-          <span class="onboarding__step-num">3</span>
-          <span>お支払い</span>
-        </div>
-      </div>
-
-      <!-- Step 1: Business Input + AI Analysis + Profile Confirm -->
-      <div class="onboarding__panel" id="obStep1">
-        <h2>事業内容を入力してください</h2>
-        <p>AIが事業内容を読み取り、マッチングに必要な情報を自動で分析します。</p>
-
-        <!-- Input Mode Tabs -->
-        <div class="input-mode-tabs">
-          <button class="input-mode-tab active" id="tabUrl" onclick="switchInputMode('url')">URLで入力</button>
-          <button class="input-mode-tab" id="tabText" onclick="switchInputMode('text')">テキストで入力</button>
-        </div>
-
-        <!-- URL Input -->
-        <div class="input-group" id="urlInputGroup">
-          <input type="url" id="companyUrlInput" placeholder="https://example.co.jp" class="input input--lg">
-          <button class="btn btn--primary btn--lg" id="analyzeBtn" onclick="analyzeCompany()">AIで分析する</button>
-        </div>
-
-        <!-- Text Input -->
-        <div class="input-group hidden" id="textInputGroup">
-          <textarea id="companyTextInput" class="input input--lg input--textarea" rows="6" placeholder="事業内容、提供サービス、強み、保有資格などを自由に記述してください（50文字以上）"></textarea>
-          <button class="btn btn--primary btn--lg" id="analyzeBtnText" onclick="analyzeCompany()">AIで分析する</button>
-        </div>
-
-        <div id="analyzeStatus" class="status-msg hidden"></div>
-
-        <!-- Profile Card (shown after AI analysis) -->
-        <div id="profileSection" class="hidden">
-          <h3 style="margin-top:24px;">AI分析結果（編集可能）</h3>
-          <div class="profile-card" id="profileCard"></div>
-          <div class="onboarding__actions">
-            <button class="btn btn--primary" onclick="confirmProfileAndNext()">確認して次へ：エリア選択</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 2: Area Selection -->
-      <div class="onboarding__panel hidden" id="obStep2">
-        <h2>チェックしたいエリアを選択してください</h2>
-        <p>選択したエリアの公募・入札情報を毎日自動でチェックします。<strong>最大3エリアまで</strong>選択できます。</p>
-        <div class="area-selection-info">
-          選択済み: <strong id="areaCount">0</strong> / 3
-        </div>
-        <div class="area-selector-controls">
-          <button class="btn btn--outline btn--sm" onclick="deselectAllAreas()">全解除</button>
-        </div>
-        <div class="area-selector" id="areaSelector">
-          <!-- JS で動的に描画 -->
-        </div>
-        <div class="onboarding__actions">
-          <button class="btn btn--outline" onclick="goOnboardingStep(1)">戻る</button>
-          <button class="btn btn--primary" onclick="registerAndGoToPayment()">次へ：お支払い</button>
-        </div>
-      </div>
-
-      <!-- Step 3: Payment -->
-      <div class="onboarding__panel hidden" id="obStep3">
-        <h2>トライアルを開始</h2>
-
-        <div class="trial-info">
-          <div class="trial-info__highlight">7日間無料でお試しいただけます</div>
-          <p>トライアル開始にはクレジットカードの登録が必要です。7日間は課金されません。</p>
-          <p>トライアル終了後、月額 &#165;3,980 の自動課金が開始されます。</p>
-          <p class="trial-info__note">途中解約はいつでも可能です。解約はマイページからワンクリックで完了します。</p>
-        </div>
-
-        <div class="onboarding__actions">
-          <button class="btn btn--outline" onclick="goOnboardingStep(2)">戻る</button>
-          <button class="btn btn--primary btn--lg" id="startTrialBtn" onclick="ctaStartTrialCheckout()">トライアルを開始する（月額 &#165;3,980）</button>
-        </div>
-      </div>
-    </div>
-  </main>
+  <!-- Onboarding page removed in v3.5 (registration flow simplified) -->
 
   <!-- ============================================================ -->
   <!-- Dashboard (shown after onboarding) -->
@@ -630,6 +539,12 @@
 
       <!-- Settings Tab -->
       <div class="tab-panel" id="tab-settings">
+        <div class="settings-section">
+          <h3>アカウント情報</h3>
+          <div id="settingsAccount">
+            <!-- JS で描画 -->
+          </div>
+        </div>
         <div class="settings-section">
           <h3>会社プロフィール</h3>
           <div id="settingsProfile">
@@ -717,6 +632,7 @@
       <form onsubmit="handleAuth(event)" class="auth-form">
         <input type="email" id="authEmail" class="input" placeholder="メールアドレス" required>
         <input type="password" id="authPassword" class="input" placeholder="パスワード" required minlength="6">
+        <div id="authSuccess" class="success-msg hidden"></div>
         <div id="authError" class="error-msg hidden"></div>
         <button type="submit" class="btn btn--primary btn--lg btn--full" id="authSubmitBtn">ログイン</button>
       </form>
@@ -735,7 +651,7 @@
   <!-- Footer -->
   <footer class="footer">
     <div class="footer__inner">
-      <p>公募ナビAI v3.3 &mdash; &copy; 2026 <a href="https://bantex.jp" target="_blank">bantex</a></p>
+      <p>公募ナビAI v3.5 &mdash; &copy; 2026 <a href="https://bantex.jp" target="_blank">bantex</a></p>
       <div class="footer__links">
         <a href="https://bantex.jp/terms.html" target="_blank">利用規約</a>
         <a href="https://bantex.jp/privacy.html" target="_blank">プライバシーポリシー</a>
@@ -750,7 +666,7 @@
     <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.48 2 2 5.83 2 10.5c0 4.08 3.42 7.5 8.05 8.32.31.07.74.21.85.48.1.25.06.63.03.88l-.14.82c-.04.25-.2.97.85.53s5.61-3.3 7.66-5.65C21.13 13.87 22 12.25 22 10.5 22 5.83 17.52 2 12 2z"/></svg>
   </a>
 
-  <script src="app.js?v=3.2"></script>
+  <script src="app.js?v=3.5"></script>
   <script>
   (function(){
     var sid = localStorage.getItem('_bx_sid');

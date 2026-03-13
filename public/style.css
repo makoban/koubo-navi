@@ -1545,6 +1545,7 @@ body {
 .auth-switch { text-align: center; margin-top: 16px; font-size: 14px; color: var(--text-muted); }
 .auth-reset { display: block; text-align: center; margin-top: 8px; }
 .error-msg { color: var(--danger); font-size: 13px; text-align: center; }
+.success-msg { color: var(--success, #4ade80); font-size: 13px; text-align: center; background: rgba(74,222,128,0.1); padding: 10px; border-radius: 6px; margin-bottom: 8px; }
 .status-msg { text-align: center; margin-top: 12px; font-size: 14px; color: var(--accent); }
 
 /* ====== Footer ====== */

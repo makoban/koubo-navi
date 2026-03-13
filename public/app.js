@@ -1,5 +1,5 @@
-// 公募ナビAI v3.3
-// フィルター強化 + ソート + 動的stats + ティア再設計
+// 公募ナビAI v3.5
+// 新規登録フロー刷新: メールのみ登録 + パスワードメール送信 + オンボーディング廃止
 
 // ---------------------------------------------------------------------------
 // Config
@@ -81,7 +81,7 @@ function initSupabase() {
       if (session?.user) {
         currentUser = session.user;
         updateAuthUI();
-        // Check if user has completed onboarding
+        // ユーザー状態確認 (未登録なら自動登録)
         checkUserStatus();
       }
     } else if (event === "SIGNED_OUT") {
@@ -147,6 +147,8 @@ function showLoginModal() {
 function hideLoginModal() {
   document.getElementById("loginModal").classList.add("hidden");
   document.getElementById("authError").classList.add("hidden");
+  const successEl = document.getElementById("authSuccess");
+  if (successEl) successEl.classList.add("hidden");
 }
 
 function toggleAuthMode() {
@@ -159,17 +161,25 @@ function updateAuthModalUI() {
   const submitBtn = document.getElementById("authSubmitBtn");
   const switchText = document.getElementById("authSwitchText");
   const switchBtn = document.getElementById("authSwitchBtn");
+  const passwordField = document.getElementById("authPassword");
+  const resetLink = document.querySelector(".auth-reset");
 
   if (authMode === "signup") {
     title.textContent = "新規登録";
-    submitBtn.textContent = "登録する";
+    submitBtn.textContent = "登録する（パスワードをメール送信）";
     switchText.textContent = "アカウントをお持ちの方";
     switchBtn.textContent = "ログイン";
+    passwordField.classList.add("hidden");
+    passwordField.required = false;
+    if (resetLink) resetLink.classList.add("hidden");
   } else {
     title.textContent = "ログイン";
     submitBtn.textContent = "ログイン";
     switchText.textContent = "アカウントがない場合";
     switchBtn.textContent = "新規登録";
+    passwordField.classList.remove("hidden");
+    passwordField.required = true;
+    if (resetLink) resetLink.classList.remove("hidden");
   }
 }
 
@@ -179,31 +189,53 @@ async function handleAuth(e) {
   const password = document.getElementById("authPassword").value;
   const errorEl = document.getElementById("authError");
   const submitBtn = document.getElementById("authSubmitBtn");
+  const successEl = document.getElementById("authSuccess");
 
   errorEl.classList.add("hidden");
+  if (successEl) successEl.classList.add("hidden");
   submitBtn.disabled = true;
   submitBtn.textContent = "処理中...";
 
   try {
-    let result;
     if (authMode === "signup") {
-      result = await supabaseClient.auth.signUp({ email, password });
+      // 新規登録: サーバーでアカウント作成 + パスワードメール送信
+      const resp = await fetch(`${WORKER_BASE}/api/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        errorEl.textContent = data.error || "登録に失敗しました";
+        errorEl.classList.remove("hidden");
+      } else {
+        // 成功メッセージを表示してログインモードに切り替え
+        if (successEl) {
+          successEl.textContent = "パスワードをメールで送信しました。メールを確認してログインしてください。";
+          successEl.classList.remove("hidden");
+        } else {
+          alert("パスワードをメールで送信しました。メールを確認してログインしてください。");
+        }
+        authMode = "login";
+        updateAuthModalUI();
+        document.getElementById("authEmail").value = email;
+      }
     } else {
-      result = await supabaseClient.auth.signInWithPassword({ email, password });
-    }
-
-    if (result.error) {
-      errorEl.textContent = result.error.message;
-      errorEl.classList.remove("hidden");
-    } else {
-      hideLoginModal();
+      // ログイン: Supabase Auth でログイン
+      const result = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (result.error) {
+        errorEl.textContent = result.error.message;
+        errorEl.classList.remove("hidden");
+      } else {
+        hideLoginModal();
+      }
     }
   } catch (err) {
     errorEl.textContent = err.message;
     errorEl.classList.remove("hidden");
   } finally {
     submitBtn.disabled = false;
-    submitBtn.textContent = authMode === "signup" ? "登録する" : "ログイン";
+    submitBtn.textContent = authMode === "signup" ? "登録する（パスワードをメール送信）" : "ログイン";
   }
 }
 
@@ -244,7 +276,8 @@ async function handlePasswordReset() {
 
 function showPage(page) {
   document.getElementById("landingPage").classList.toggle("hidden", page !== "landing");
-  document.getElementById("onboardingPage").classList.toggle("hidden", page !== "onboarding");
+  const obPage = document.getElementById("onboardingPage");
+  if (obPage) obPage.classList.add("hidden");
   document.getElementById("dashboardPage").classList.toggle("hidden", page !== "dashboard");
 
   if (page === "dashboard") {
@@ -267,14 +300,35 @@ async function checkUserStatus() {
     const data = await resp.json();
 
     if (data.user) {
-      // User has completed onboarding - remember status but stay on current page
+      // ユーザー登録済み → ダッシュボード表示可能
       companyProfile = data.profile;
       userOnboarded = true;
       updateAuthUI();
+    } else {
+      // 未登録（Google OAuthで初回ログインなど）→ 自動登録
+      await autoRegisterUser(token);
     }
-    // else: user exists in auth but hasn't onboarded → stay on landing
   } catch {
-    // Not onboarded yet
+    // エラー時は何もしない
+  }
+}
+
+async function autoRegisterUser(token) {
+  try {
+    const resp = await fetch(`${WORKER_BASE}/api/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({}),
+    });
+    if (resp.ok || resp.status === 409) {
+      userOnboarded = true;
+      updateAuthUI();
+    }
+  } catch {
+    // 登録失敗は無視
   }
 }
 
@@ -284,21 +338,14 @@ async function checkUserStatus() {
 
 function startOnboarding() {
   if (!currentUser) {
+    // 未ログイン → 新規登録モーダル表示
     showLoginModal();
     authMode = "signup";
     updateAuthModalUI();
-    // After login, resume onboarding
-    const origCallback = supabaseClient.auth.onAuthStateChange;
     return;
   }
-  // 既にオンボーディング済みのユーザーはダッシュボードへ
-  if (userOnboarded) {
-    showPage("dashboard");
-    return;
-  }
-  showPage("onboarding");
-  goOnboardingStep(1);
-  loadAreas();
+  // ログイン済み → ダッシュボードへ
+  showPage("dashboard");
 }
 
 function goOnboardingStep(step) {
@@ -928,19 +975,60 @@ function renderDetailedAnalysis(a) {
 function loadSettings(profileData) {
   if (!profileData) return;
 
+  // アカウント情報セクション
+  const accountSection = document.getElementById("settingsAccount");
+  if (accountSection) {
+    const user = profileData.user || {};
+    const email = currentUser?.email || user.notification_email || "";
+    const isGoogleUser = currentUser?.app_metadata?.provider === "google";
+    accountSection.innerHTML = `
+      <div class="profile-card__row">
+        <span class="profile-card__label">メールアドレス</span>
+        <span class="profile-card__value">${escapeHtml(email)}</span>
+      </div>
+      <div class="profile-card__row">
+        <span class="profile-card__label">ログイン方法</span>
+        <span class="profile-card__value">${isGoogleUser ? "Google アカウント" : "メール + パスワード"}</span>
+      </div>
+      ${!isGoogleUser ? `
+      <div id="passwordChangeSection" style="margin-top:12px;">
+        <button class="btn btn--outline btn--sm" onclick="togglePasswordChange()">パスワードを変更</button>
+        <div id="passwordChangeForm" class="hidden" style="margin-top:12px;">
+          <input type="password" id="newPassword" class="input" placeholder="新しいパスワード（6文字以上）" minlength="6" style="margin-bottom:8px;">
+          <input type="password" id="newPasswordConfirm" class="input" placeholder="パスワード確認" minlength="6" style="margin-bottom:8px;">
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn--primary btn--sm" onclick="changePassword()">変更する</button>
+            <button class="btn btn--outline btn--sm" onclick="togglePasswordChange()">キャンセル</button>
+          </div>
+          <div id="passwordChangeStatus" class="status-msg hidden" style="margin-top:8px;"></div>
+        </div>
+      </div>` : ""}
+    `;
+  }
+
   // Profile info - full display
   const settingsProfile = document.getElementById("settingsProfile");
-  if (companyProfile) {
-    const p = companyProfile;
-    const companyUrl = profileData.user?.company_url || "";
+  const p = companyProfile || {};
+  const companyUrl = profileData.user?.company_url || "";
+  const hasProfile = p.company_name || (p.business_areas || []).length > 0;
+
+  if (hasProfile) {
     settingsProfile.innerHTML = `
-      <div class="profile-card__row"><span class="profile-card__label">会社名</span><span class="profile-card__value">${escapeHtml(p.company_name || "")}</span></div>
-      <div class="profile-card__row"><span class="profile-card__label">所在地</span><span class="profile-card__value">${escapeHtml(p.location || "")}</span></div>
-      <div class="profile-card__row"><span class="profile-card__label">事業分野</span><span class="profile-card__value">${escapeHtml((p.business_areas || []).join("、"))}</span></div>
-      <div class="profile-card__row"><span class="profile-card__label">提供サービス</span><span class="profile-card__value">${escapeHtml((p.services || []).join("、"))}</span></div>
-      <div class="profile-card__row"><span class="profile-card__label">強み</span><span class="profile-card__value">${escapeHtml((p.strengths || []).join("、"))}</span></div>
+      <div class="profile-card__row"><span class="profile-card__label">会社名</span><span class="profile-card__value">${escapeHtml(p.company_name || "未設定")}</span></div>
+      <div class="profile-card__row"><span class="profile-card__label">所在地</span><span class="profile-card__value">${escapeHtml(p.location || "未設定")}</span></div>
+      <div class="profile-card__row"><span class="profile-card__label">事業分野</span><span class="profile-card__value">${escapeHtml((p.business_areas || []).join("、") || "未設定")}</span></div>
+      <div class="profile-card__row"><span class="profile-card__label">提供サービス</span><span class="profile-card__value">${escapeHtml((p.services || []).join("、") || "未設定")}</span></div>
+      <div class="profile-card__row"><span class="profile-card__label">強み</span><span class="profile-card__value">${escapeHtml((p.strengths || []).join("、") || "未設定")}</span></div>
       ${companyUrl ? `<div class="profile-card__row"><span class="profile-card__label">URL</span><span class="profile-card__value"><a href="${escapeHtml(companyUrl)}" target="_blank" style="color:var(--accent)">${escapeHtml(companyUrl)}</a></span></div>` : ""}
       <button class="btn btn--outline btn--sm" onclick="startProfileEdit()" style="margin-top:12px;">プロフィールを編集</button>
+    `;
+  } else {
+    // プロフィール未設定 → 入力を促す
+    settingsProfile.innerHTML = `
+      <div class="settings-empty-profile">
+        <p style="color:var(--text-secondary);margin-bottom:12px;">事業プロフィールが未設定です。設定するとAIが業種にマッチする案件を自動でお届けします。</p>
+        <button class="btn btn--primary btn--sm" onclick="startProfileEdit()">プロフィールを設定する</button>
+      </div>
     `;
   }
 
@@ -1111,6 +1199,47 @@ async function saveSettings() {
       email_notify: document.getElementById("settingEmailNotify").checked,
     }),
   });
+}
+
+function togglePasswordChange() {
+  const form = document.getElementById("passwordChangeForm");
+  if (form) form.classList.toggle("hidden");
+}
+
+async function changePassword() {
+  const newPw = document.getElementById("newPassword").value;
+  const confirmPw = document.getElementById("newPasswordConfirm").value;
+  const statusEl = document.getElementById("passwordChangeStatus");
+
+  if (!newPw || newPw.length < 6) {
+    statusEl.textContent = "パスワードは6文字以上で入力してください";
+    statusEl.style.color = "var(--danger)";
+    statusEl.classList.remove("hidden");
+    return;
+  }
+  if (newPw !== confirmPw) {
+    statusEl.textContent = "パスワードが一致しません";
+    statusEl.style.color = "var(--danger)";
+    statusEl.classList.remove("hidden");
+    return;
+  }
+
+  statusEl.textContent = "変更中...";
+  statusEl.style.color = "";
+  statusEl.classList.remove("hidden");
+
+  try {
+    const { error } = await supabaseClient.auth.updateUser({ password: newPw });
+    if (error) throw error;
+    statusEl.textContent = "パスワードを変更しました";
+    statusEl.style.color = "var(--success)";
+    document.getElementById("newPassword").value = "";
+    document.getElementById("newPasswordConfirm").value = "";
+    setTimeout(() => togglePasswordChange(), 1500);
+  } catch (err) {
+    statusEl.textContent = `エラー: ${err.message}`;
+    statusEl.style.color = "var(--danger)";
+  }
 }
 
 const ALL_INDUSTRY_CATEGORIES = ["IT・DX", "建設・土木", "コンサル・調査", "広告・クリエイティブ", "設備・物品", "清掃・管理", "医療・福祉", "教育・研修", "環境・エネルギー", "その他"];

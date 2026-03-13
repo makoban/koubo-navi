@@ -231,7 +231,7 @@ def _build_email_html(
     </div>
 
     <div style="text-align:center;margin-top:32px;color:#64748b;font-size:11px;">
-      <p>公募ナビAI v3.4 by bantex</p>
+      <p>公募ナビAI v3.5 by bantex</p>
       <p>通知設定はダッシュボードから変更できます</p>
     </div>
   </div>

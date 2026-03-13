@@ -2,7 +2,9 @@
  * koubo-navi-proxy - Cloudflare Worker
  *
  * Routes:
- *   POST /api/analyze-company       - 会社URL分析（Gemini API）+ 業種カテゴリ抽出
+ *   POST /api/signup                 - メール新規登録（パスワード自動生成+メール送信）
+ *   POST /api/register               - ユーザー初期登録（認証済みユーザー用）
+ *   POST /api/analyze-company        - 会社URL分析（Gemini API）+ 業種カテゴリ抽出
  *   GET  /api/areas                  - 利用可能エリア一覧
  *   GET  /api/user/profile           - ユーザープロフィール取得
  *   PUT  /api/user/profile           - プロフィール更新
@@ -15,7 +17,7 @@
  *   POST /api/cancel-subscription    - サブスク解約
  *
  * Required secrets (wrangler secret put):
- *   GEMINI_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, SUPABASE_SERVICE_KEY
+ *   GEMINI_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, SUPABASE_SERVICE_KEY, RESEND_API_KEY
  *
  * Required vars (wrangler.toml [vars]):
  *   SUPABASE_URL, STRIPE_PRICE_MONTHLY, STRIPE_PRICE_YEARLY
@@ -1086,6 +1088,140 @@ async function handleWebhook(request, env, ctx) {
 // User registration helper (called during onboarding)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// POST /api/signup (no auth required)
+// メールアドレスのみで新規登録。パスワードを自動生成しメールで送信。
+// ---------------------------------------------------------------------------
+
+async function handleSignup(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return errorResponse("不正なJSON", 400); }
+
+  const email = (body.email || "").trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return errorResponse("有効なメールアドレスを入力してください", 400);
+  }
+
+  // パスワード自動生成（12文字: 英数字+記号）
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
+  const arr = new Uint8Array(12);
+  crypto.getRandomValues(arr);
+  const password = Array.from(arr, b => chars[b % chars.length]).join("");
+
+  // Supabase Admin API でユーザー作成
+  const createUserResp = await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+      "apikey": env.SUPABASE_SERVICE_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email,
+      password,
+      email_confirm: true,
+    }),
+  });
+
+  const createResult = await createUserResp.json();
+
+  if (!createUserResp.ok) {
+    // 既に登録済みの場合
+    if (createResult.msg?.includes("already") || createResult.message?.includes("already")) {
+      return errorResponse("このメールアドレスは既に登録されています。ログインしてください。", 409);
+    }
+    console.error("Supabase user creation failed:", JSON.stringify(createResult));
+    await notifySlack(env, "新規登録失敗", `email=${email} error=${JSON.stringify(createResult)}`);
+    return errorResponse("アカウント作成に失敗しました", 500);
+  }
+
+  const userId = createResult.id;
+  const trialEnd = new Date(Date.now() + 7 * 86400000).toISOString();
+
+  // koubo_users レコード作成（trial, 空プロフィール）
+  await supabaseRequest("/koubo_users", "POST", {
+    id: userId,
+    notification_email: email,
+    status: "trial",
+    trial_ends_at: trialEnd,
+  }, env, { prefer: "return=minimal" });
+
+  // 空の company_profiles 作成
+  await supabaseRequest("/company_profiles", "POST", {
+    user_id: userId,
+    company_name: null,
+    location: null,
+    business_areas: [],
+    services: [],
+    strengths: [],
+    matching_keywords: [],
+    industry_categories: ["その他"],
+  }, env, { prefer: "return=minimal" });
+
+  // Resend でパスワードメール送信
+  if (env.RESEND_API_KEY) {
+    try {
+      const emailResp = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env.RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "KouboNavi AI <noreply@bantex.jp>",
+          to: [email],
+          subject: "【公募ナビAI】アカウント登録完了",
+          html: `<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0a0e1a;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:24px;">
+    <div style="text-align:center;margin-bottom:24px;">
+      <h1 style="color:#c9a96e;font-size:22px;margin:0;">公募ナビAI</h1>
+      <p style="color:#f1f5f9;font-size:16px;font-weight:bold;margin:12px 0 4px;">アカウント登録が完了しました</p>
+    </div>
+    <div style="background:#1a1f35;border-radius:8px;padding:24px;margin-bottom:24px;">
+      <p style="color:#f1f5f9;margin:0 0 16px;">以下の情報でログインしてください。</p>
+      <div style="background:rgba(0,0,0,0.3);border-radius:6px;padding:16px;margin-bottom:16px;">
+        <p style="color:#94a3b8;font-size:13px;margin:0 0 4px;">メールアドレス</p>
+        <p style="color:#f1f5f9;font-size:15px;margin:0;font-weight:bold;">${email}</p>
+      </div>
+      <div style="background:rgba(0,0,0,0.3);border-radius:6px;padding:16px;">
+        <p style="color:#94a3b8;font-size:13px;margin:0 0 4px;">パスワード</p>
+        <p style="color:#c9a96e;font-size:15px;margin:0;font-weight:bold;letter-spacing:1px;">${password}</p>
+      </div>
+      <p style="color:#fbbf24;font-size:12px;margin:16px 0 0;">※ ログイン後、設定画面からパスワードを変更できます。</p>
+    </div>
+    <div style="text-align:center;">
+      <a href="https://koubo-navi.bantex.jp" style="display:inline-block;background:#c9a96e;color:#0a0e1a;padding:12px 32px;border-radius:8px;font-weight:bold;text-decoration:none;font-size:15px;">ログインする</a>
+    </div>
+    <div style="text-align:center;margin-top:32px;color:#64748b;font-size:11px;">
+      <p>7日間の無料トライアルが開始されました。</p>
+      <p>公募ナビAI by bantex</p>
+    </div>
+  </div>
+</body></html>`,
+        }),
+      });
+      if (!emailResp.ok) {
+        const errText = await emailResp.text();
+        console.error("Resend email failed:", errText);
+        await notifySlack(env, "登録メール送信失敗", `email=${email} error=${errText.slice(0, 500)}`);
+      }
+    } catch (e) {
+      console.error("Resend email error:", e.message);
+      await notifySlack(env, "登録メール送信エラー", `email=${email} error=${e.message}`);
+    }
+  } else {
+    console.warn("RESEND_API_KEY not set, skipping welcome email");
+  }
+
+  return jsonResponse({ success: true, message: "パスワードをメールで送信しました" });
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/register (authenticated)
+// ---------------------------------------------------------------------------
+
 async function handleRegisterUser(request, env) {
   const { user_id, email } = await getUserFromJWT(request, env);
   if (!user_id) return errorResponse("認証が必要です", 401);
@@ -1094,9 +1230,6 @@ async function handleRegisterUser(request, env) {
   try { body = await request.json(); } catch { return errorResponse("不正なJSON", 400); }
 
   const { company_url, company_text, area_ids, profile } = body;
-  if (!company_url && !company_text) {
-    return errorResponse("company_url または company_text のいずれかは必須です", 400);
-  }
 
   // 既登録ユーザーの二重登録を防止
   // koubo_users にレコードが存在する場合は登録を拒否する
@@ -1134,12 +1267,12 @@ async function handleRegisterUser(request, env) {
   });
 
   // プロフィールを保存（DELETE + POST で確実にupsert）
+  await supabaseRequest(`/company_profiles?user_id=eq.${user_id}`, "DELETE", null, env, { prefer: "return=minimal" });
   if (profile && typeof profile === "object") {
     const regValidCategories = ["IT・DX", "建設・土木", "コンサル・調査", "広告・クリエイティブ", "設備・物品", "清掃・管理", "医療・福祉", "教育・研修", "環境・エネルギー", "その他"];
     const regIndustryCategories = (profile.industry_categories || []).filter(c => regValidCategories.includes(c));
     if (regIndustryCategories.length === 0) regIndustryCategories.push("その他");
 
-    await supabaseRequest(`/company_profiles?user_id=eq.${user_id}`, "DELETE", null, env, { prefer: "return=minimal" });
     await supabaseRequest("/company_profiles", "POST", {
       user_id,
       company_name: profile.company_name || null,
@@ -1149,6 +1282,18 @@ async function handleRegisterUser(request, env) {
       strengths: profile.strengths || [],
       matching_keywords: profile.matching_keywords || [],
       industry_categories: regIndustryCategories,
+    }, env, { prefer: "return=minimal" });
+  } else {
+    // プロフィール未指定の場合は空で作成（Google OAuth初回ログイン等）
+    await supabaseRequest("/company_profiles", "POST", {
+      user_id,
+      company_name: null,
+      location: null,
+      business_areas: [],
+      services: [],
+      strengths: [],
+      matching_keywords: [],
+      industry_categories: ["その他"],
     }, env, { prefer: "return=minimal" });
   }
 
@@ -1229,6 +1374,7 @@ async function router(request, env, ctx) {
   if (path === "/api/checkout" && method === "POST") return handleCheckout(request, env);
   if (path === "/api/webhook" && method === "POST") return handleWebhook(request, env, ctx);
   if (path === "/api/cancel-subscription" && method === "POST") return handleCancelSubscription(request, env);
+  if (path === "/api/signup" && method === "POST") return handleSignup(request, env);
   if (path === "/api/register" && method === "POST") return handleRegisterUser(request, env);
   if (path === "/api/password-reset" && method === "POST") return handlePasswordReset(request, env);
 
