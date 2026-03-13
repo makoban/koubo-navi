@@ -1,4 +1,4 @@
-// 公募ナビAI v3.5.2
+// 公募ナビAI v3.5.3
 // 新規登録フロー刷新: メールのみ登録 + パスワードメール送信 + オンボーディング廃止
 
 // ---------------------------------------------------------------------------
@@ -721,11 +721,14 @@ async function loadDashboard() {
     document.getElementById("dashCompanyName").textContent =
       companyProfile?.company_name || profileData.user?.notification_email?.split("@")[0] || "";
 
-    // Status badge
+    // Status badge (trial期限切れ判定を含む)
     const statusEl = document.getElementById("dashStatus");
-    const userStatus = profileData.user?.status || "trial";
-    statusEl.textContent = userStatus === "active" ? "有料プラン" : userStatus === "trial" ? "無料トライアル" : userStatus;
-    statusEl.className = `badge badge--${userStatus}`;
+    const rawStatus = profileData.user?.status || "trial";
+    const trialEndsAt = profileData.user?.trial_ends_at;
+    const isTrialExpired = rawStatus === "trial" && trialEndsAt && new Date(trialEndsAt) <= new Date();
+    const userStatus = isTrialExpired ? "expired" : rawStatus;
+    statusEl.textContent = userStatus === "active" ? "有料プラン" : userStatus === "trial" ? "無料トライアル" : "無料プラン";
+    statusEl.className = `badge badge--${userStatus === "expired" ? "free" : userStatus}`;
 
     // Load all areas for name resolution
     const areasResp = await fetch(`${WORKER_BASE}/api/areas`);
@@ -1526,13 +1529,16 @@ function renderSubscription(data) {
 
   if (status === "none" || !sub) {
     // No subscription yet
+    const isActiveTrial = status === "trial";
+    const isExpired = status === "expired";
+    const planLabel = isActiveTrial ? "無料トライアル中" : isExpired ? "トライアル期限切れ" : "無料プラン";
     container.innerHTML = `
       <div class="sub-card">
-        <div class="sub-card__plan">${status === "trial" ? "無料トライアル中" : "無料プラン"}</div>
+        <div class="sub-card__plan">${planLabel}</div>
         ${trialEnd ? `<div class="sub-card__info">トライアル終了日: ${new Date(trialEnd).toLocaleDateString("ja-JP")}</div>` : ""}
+        ${isExpired ? `<p class="sub-card__desc" style="color:#f59e0b;">トライアル期間が終了しました。有料プランにアップグレードすると全機能をご利用いただけます。</p>` : ""}
         <p class="sub-card__desc">無料プラン: 案件一覧は閲覧可・詳細とAI分析は有料プラン限定</p>
         <button class="btn btn--primary btn--lg" onclick="startCheckout('monthly')">月額プラン ¥3,980 で開始</button>
-        ${status === "trial" ? `<button class="btn btn--danger" style="margin-top:12px" onclick="cancelSubscription()">解約する</button>` : ""}
       </div>
     `;
     return;
