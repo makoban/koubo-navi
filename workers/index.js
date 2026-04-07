@@ -454,7 +454,7 @@ async function handleGetOpportunities(request, env) {
   const user = userResult.data?.[0] || {};
   const now = new Date();
   const trialEnd = user.trial_ends_at ? new Date(user.trial_ends_at) : null;
-  const isActive = user.status === "active";
+  const isActive = user.status === "active" || user.status === "permanent_free";
   const isTrial = user.status === "trial" && trialEnd && trialEnd > now;
   const tier = isActive ? "paid" : isTrial ? "trial" : "free";
   const isPaid = isActive || isTrial;
@@ -652,7 +652,7 @@ async function handleAnalyzeOpportunity(request, env) {
   const user = userResult.data?.[0] || {};
   const now = new Date();
   const trialEnd = user.trial_ends_at ? new Date(user.trial_ends_at) : null;
-  const isActive = user.status === "active";
+  const isActive = user.status === "active" || user.status === "permanent_free";
   const isTrial = user.status === "trial" && trialEnd && trialEnd > now;
   if (!isActive && !isTrial) {
     return errorResponse("AI詳細分析は有料プランの機能です", 403);
@@ -851,9 +851,16 @@ async function handleGetSubscription(request, env) {
   );
   const user = userResult.data?.[0] || {};
 
+  // trial期限切れ判定: DBはtrialのままだがフロントに正確なステータスを返す
+  let effectiveStatus = user.status || "none";
+  const trialEnd = user.trial_ends_at ? new Date(user.trial_ends_at) : null;
+  if (effectiveStatus === "trial" && trialEnd && trialEnd <= new Date()) {
+    effectiveStatus = "expired";
+  }
+
   return jsonResponse({
     subscription: sub,
-    user_status: user.status || "none",
+    user_status: effectiveStatus,
     trial_ends_at: user.trial_ends_at || null,
   });
 }
@@ -1102,8 +1109,8 @@ async function handleSignup(request, env) {
     return errorResponse("有効なメールアドレスを入力してください", 400);
   }
 
-  // パスワード自動生成（12文字: 英数字+記号）
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
+  // パスワード自動生成（12文字: 英数字のみ、紛らわしい文字除外）
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
   const arr = new Uint8Array(12);
   crypto.getRandomValues(arr);
   const password = Array.from(arr, b => chars[b % chars.length]).join("");
@@ -1205,14 +1212,17 @@ async function handleSignup(request, env) {
       if (!emailResp.ok) {
         const errText = await emailResp.text();
         console.error("Resend email failed:", errText);
-        await notifySlack(env, "登録メール送信失敗", `email=${email} error=${errText.slice(0, 500)}`);
+        await notifySlack(env, "登録メール送信失敗", `email=${email} status=${emailResp.status} error=${errText.slice(0, 500)}`);
+        return jsonResponse({ success: false, error: "アカウントは作成されましたが、メール送信に失敗しました。サポートにお問い合わせください。" }, 500);
       }
     } catch (e) {
       console.error("Resend email error:", e.message);
       await notifySlack(env, "登録メール送信エラー", `email=${email} error=${e.message}`);
+      return jsonResponse({ success: false, error: "アカウントは作成されましたが、メール送信に失敗しました。サポートにお問い合わせください。" }, 500);
     }
   } else {
     console.warn("RESEND_API_KEY not set, skipping welcome email");
+    return jsonResponse({ success: false, error: "メール送信の設定がありません" }, 500);
   }
 
   return jsonResponse({ success: true, message: "パスワードをメールで送信しました" });

@@ -727,8 +727,8 @@ async function loadDashboard() {
     const trialEndsAt = profileData.user?.trial_ends_at;
     const isTrialExpired = rawStatus === "trial" && trialEndsAt && new Date(trialEndsAt) <= new Date();
     const userStatus = isTrialExpired ? "expired" : rawStatus;
-    statusEl.textContent = userStatus === "active" ? "有料プラン" : userStatus === "trial" ? "無料トライアル" : "無料プラン";
-    statusEl.className = `badge badge--${userStatus === "expired" ? "free" : userStatus}`;
+    statusEl.textContent = userStatus === "active" ? "有料プラン" : userStatus === "permanent_free" ? "永久無料プラン" : userStatus === "trial" ? "無料トライアル" : "無料プラン";
+    statusEl.className = `badge badge--${userStatus === "expired" ? "free" : userStatus === "permanent_free" ? "active" : userStatus}`;
 
     // Load all areas for name resolution
     const areasResp = await fetch(`${WORKER_BASE}/api/areas`);
@@ -1526,6 +1526,16 @@ function renderSubscription(data) {
   const sub = data.subscription;
   const status = data.user_status || "none";
   const trialEnd = data.trial_ends_at;
+
+  if (status === "permanent_free") {
+    container.innerHTML = `
+      <div class="sub-card">
+        <div class="sub-card__plan">永久無料プラン</div>
+        <p class="sub-card__desc">全機能を無料でご利用いただけます。</p>
+      </div>
+    `;
+    return;
+  }
 
   if (status === "none" || !sub) {
     // No subscription yet
