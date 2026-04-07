@@ -170,9 +170,10 @@
               <div class="mockup-opp__meta">愛知県 総務部 デジタル推進課 / 企画競争（プロポーザル） / 締切: 3月15日</div>
               <div class="mockup-opp__reason">自治体のDX推進を目的とした業務効率化ツールの選定・導入支援・運用サポートを行う業務委託です。</div>
               <div class="mockup-opp__actions">
-                <span class="btn btn--outline btn--sm">詳細を見る</span>
-                <span class="btn btn--primary btn--sm">AI詳細分析</span>
+                <span class="btn btn--outline btn--sm" style="cursor:pointer" onclick="showSampleDetail(0)">詳細を見る</span>
+                <span class="btn btn--primary btn--sm" style="cursor:pointer" onclick="showSampleAnalysis(0)">AI詳細分析</span>
               </div>
+              <div class="mockup-opp__sample-panel hidden" id="sample-panel-0"></div>
             </div>
           </div>
 
@@ -182,9 +183,10 @@
               <div class="mockup-opp__meta">名古屋市 市民経済局 / 一般競争入札 / 締切: 3月22日</div>
               <div class="mockup-opp__reason">既存の公共施設予約システムをクラウド基盤へ移行し、継続的な運用保守を行う業務です。</div>
               <div class="mockup-opp__actions">
-                <span class="btn btn--outline btn--sm">詳細を見る</span>
-                <span class="btn btn--primary btn--sm">AI詳細分析</span>
+                <span class="btn btn--outline btn--sm" style="cursor:pointer" onclick="showSampleDetail(1)">詳細を見る</span>
+                <span class="btn btn--primary btn--sm" style="cursor:pointer" onclick="showSampleAnalysis(1)">AI詳細分析</span>
               </div>
+              <div class="mockup-opp__sample-panel hidden" id="sample-panel-1"></div>
             </div>
           </div>
 
@@ -194,9 +196,10 @@
               <div class="mockup-opp__meta">東京都 財務局 / 指名競争入札 / 締切: 3月10日</div>
               <div class="mockup-opp__reason">庁舎内空調設備の定期保守点検および緊急時対応を含む業務委託です。</div>
               <div class="mockup-opp__actions">
-                <span class="btn btn--outline btn--sm">詳細を見る</span>
-                <span class="btn btn--primary btn--sm">AI詳細分析</span>
+                <span class="btn btn--outline btn--sm" style="cursor:pointer" onclick="showSampleDetail(2)">詳細を見る</span>
+                <span class="btn btn--primary btn--sm" style="cursor:pointer" onclick="showSampleAnalysis(2)">AI詳細分析</span>
               </div>
+              <div class="mockup-opp__sample-panel hidden" id="sample-panel-2"></div>
             </div>
           </div>
         </div>
@@ -669,7 +672,7 @@
     <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.48 2 2 5.83 2 10.5c0 4.08 3.42 7.5 8.05 8.32.31.07.74.21.85.48.1.25.06.63.03.88l-.14.82c-.04.25-.2.97.85.53s5.61-3.3 7.66-5.65C21.13 13.87 22 12.25 22 10.5 22 5.83 17.52 2 12 2z"/></svg>
   </a>
 
-  <script src="app.js?v=3.5.5"></script>
+  <script src="app.js?v=3.5.6"></script>
   <script>
   (function(){
     var sid = localStorage.getItem('_bx_sid');

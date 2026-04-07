@@ -1640,3 +1640,177 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+// ---------------------------------------------------------------------------
+// LP Sample Data (サンプルカード用のデモデータ)
+// ---------------------------------------------------------------------------
+
+const SAMPLE_DETAILS = [
+  {
+    title: "DX推進に係る業務効率化ツール導入支援業務委託",
+    org: "愛知県 総務部 デジタル推進課",
+    method: "企画競争（プロポーザル）",
+    deadline: "2026年3月15日",
+    published: "2026年2月20日",
+    budget: "3,500万円（税込）",
+    period: "2026年4月1日〜2027年3月31日",
+    summary: "愛知県庁内の業務効率化を目的として、RPA・ワークフローツール等のDX関連ソリューションの選定・導入支援・職員研修・運用サポートを包括的に行う委託業務。対象部署は総務部を含む5部局、約200名の職員が利用予定。",
+    contact: "愛知県総務部デジタル推進課 担当: 山田 TEL: 052-XXX-XXXX",
+  },
+  {
+    title: "公共施設予約システムの更改及び運用保守業務",
+    org: "名古屋市 市民経済局",
+    method: "一般競争入札",
+    deadline: "2026年3月22日",
+    published: "2026年2月28日",
+    budget: "8,200万円（税込・5年間総額）",
+    period: "2026年7月1日〜2031年6月30日",
+    summary: "名古屋市が管理する公共施設（体育館・会議室・ホール等 約150施設）の予約システムをオンプレミスからクラウド基盤へ移行し、市民向けオンライン予約機能の拡充、管理者向けダッシュボードの構築、及び5年間の運用保守を行う業務。",
+    contact: "名古屋市市民経済局 情報システム課 担当: 佐藤 TEL: 052-XXX-XXXX",
+  },
+  {
+    title: "庁舎空調設備保守点検業務委託",
+    org: "東京都 財務局",
+    method: "指名競争入札",
+    deadline: "2026年3月10日",
+    published: "2026年2月15日",
+    budget: "1,800万円（税込・年額）",
+    period: "2026年4月1日〜2027年3月31日",
+    summary: "東京都庁舎（第一本庁舎・第二本庁舎）の空調設備に関する定期保守点検（年4回）、フィルター清掃・交換、緊急時の修繕対応、及び設備台帳の管理を行う業務委託。対象設備は中央熱源方式の空調機約320台。",
+    contact: "東京都財務局 建築保全部 設備課 担当: 鈴木 TEL: 03-XXXX-XXXX",
+  },
+];
+
+const SAMPLE_ANALYSES = [
+  {
+    summary: "自治体DX推進の業務効率化ツール導入支援案件です。IT・DXコンサルティング、RPA導入実績のある企業に高い親和性があります。プロポーザル方式のため、提案力と実績が重視されます。",
+    match_points: [
+      "DX推進・業務効率化ツールの導入支援経験が直接活かせる案件",
+      "プロポーザル方式のため、価格だけでなく提案内容で差別化が可能",
+      "愛知県での自治体DX実績があれば大きなアドバンテージ",
+    ],
+    concerns: [
+      "5部局200名規模の大型案件のため、十分な体制構築が必要",
+      "職員研修を含むため、研修実施体制・カリキュラム作成能力が求められる",
+      "締切まで短期間のため、提案書作成の迅速な対応が必要",
+    ],
+    actions: [
+      "過去の自治体DX支援実績を整理し、提案書のベースを作成する",
+      "RPA・ワークフローツールのベンダーとの協業体制を確認する",
+      "愛知県の既存DX計画・方針を事前調査し、提案に反映する",
+      "プロジェクトマネージャー候補と技術チームの体制案を準備する",
+    ],
+    estimated_difficulty: "中",
+    recommended_preparation_days: 14,
+  },
+  {
+    summary: "名古屋市の公共施設予約システムのクラウド移行と5年間の運用保守案件です。自治体向けシステム開発・クラウド移行の実績がある企業に適しています。長期契約のため安定した収益が見込めます。",
+    match_points: [
+      "クラウド移行＋運用保守の長期契約で安定収益が期待できる",
+      "公共施設予約システムの構築経験があれば強力なアピール材料",
+      "5年間の運用保守契約により、継続的なリレーション構築が可能",
+    ],
+    concerns: [
+      "150施設規模のデータ移行計画の策定が求められる",
+      "既存システムからの移行に伴うダウンタイムの最小化が必須",
+      "市民向けUIのアクセシビリティ対応が評価ポイントになる可能性",
+    ],
+    actions: [
+      "類似の公共施設予約システム構築・移行実績をまとめる",
+      "クラウド基盤（AWS/Azure/GCP）の選定根拠を準備する",
+      "移行スケジュールとリスク軽減策のドラフトを作成する",
+      "5年間の運用保守体制と費用の見積もりを準備する",
+    ],
+    estimated_difficulty: "高",
+    recommended_preparation_days: 18,
+  },
+  {
+    summary: "東京都庁舎の空調設備保守点検業務です。ビル設備管理・空調保守の実績がある企業に適しています。指名競争入札のため、実績と信頼性が重要です。",
+    match_points: [
+      "年間契約の安定した保守点検業務で、継続受注の可能性が高い",
+      "東京都庁舎という大型施設の実績は、他案件獲得にも有利",
+      "定期点検＋緊急対応の組み合わせで、技術力をアピール可能",
+    ],
+    concerns: [
+      "指名競争入札のため、過去の都関連実績や有資格者の配置が求められる",
+      "中央熱源方式の空調機320台という規模に対応できる体制が必要",
+      "緊急時対応の体制（24時間対応等）が評価される可能性",
+    ],
+    actions: [
+      "冷凍機械責任者・建築物環境衛生管理技術者等の有資格者をリストアップ",
+      "過去の官公庁・大型ビルの空調保守実績を整理する",
+      "緊急時対応フロー（連絡体制・駆付時間）のドラフトを準備する",
+      "年間保守スケジュールのモデルプランを作成する",
+    ],
+    estimated_difficulty: "低",
+    recommended_preparation_days: 10,
+  },
+];
+
+function showSampleDetail(idx) {
+  const panel = document.getElementById(`sample-panel-${idx}`);
+  if (!panel) return;
+  if (!panel.classList.contains("hidden") && panel.dataset.mode === "detail") {
+    panel.classList.add("hidden");
+    return;
+  }
+  const d = SAMPLE_DETAILS[idx];
+  panel.dataset.mode = "detail";
+  panel.innerHTML = `
+    <div class="analysis-panel" style="border-left:3px solid var(--accent);">
+      <div style="background:rgba(201,169,110,0.15);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--accent);font-weight:bold;">
+        &#x1F4CB; これはサンプル表示です。実際の案件データではありません。
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="font-weight:bold;font-size:15px;margin-bottom:8px;">${escapeHtml(d.title)}</div>
+        <div style="color:var(--text-muted);font-size:13px;">${escapeHtml(d.org)} / ${escapeHtml(d.method)}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;font-size:13px;">
+        <div><span style="color:var(--text-muted);">公開日:</span> ${escapeHtml(d.published)}</div>
+        <div><span style="color:var(--text-muted);">締切:</span> ${escapeHtml(d.deadline)}</div>
+        <div><span style="color:var(--text-muted);">予算:</span> ${escapeHtml(d.budget)}</div>
+        <div><span style="color:var(--text-muted);">履行期間:</span> ${escapeHtml(d.period)}</div>
+      </div>
+      <div style="font-size:14px;line-height:1.7;margin-bottom:12px;">${escapeHtml(d.summary)}</div>
+      <div style="font-size:13px;color:var(--text-muted);">連絡先: ${escapeHtml(d.contact)}</div>
+    </div>
+  `;
+  panel.classList.remove("hidden");
+}
+
+function showSampleAnalysis(idx) {
+  const panel = document.getElementById(`sample-panel-${idx}`);
+  if (!panel) return;
+  if (!panel.classList.contains("hidden") && panel.dataset.mode === "analysis") {
+    panel.classList.add("hidden");
+    return;
+  }
+  const a = SAMPLE_ANALYSES[idx];
+  panel.dataset.mode = "analysis";
+  const diffClass = a.estimated_difficulty === "高" ? "high" : a.estimated_difficulty === "低" ? "low" : "mid";
+  panel.innerHTML = `
+    <div class="analysis-panel">
+      <div style="background:rgba(201,169,110,0.15);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--accent);font-weight:bold;">
+        &#x1F4CB; これはサンプル表示です。実際のAI分析結果ではありません。
+      </div>
+      <div class="analysis-panel__summary">${escapeHtml(a.summary)}</div>
+      <div class="analysis-panel__section analysis-panel__section--match">
+        <h4>&#x2714; マッチポイント</h4>
+        <ul>${a.match_points.map(p => `<li>${escapeHtml(p)}</li>`).join("")}</ul>
+      </div>
+      <div class="analysis-panel__section analysis-panel__section--concern">
+        <h4>&#x26A0; 懸念点</h4>
+        <ul>${a.concerns.map(c => `<li>${escapeHtml(c)}</li>`).join("")}</ul>
+      </div>
+      <div class="analysis-panel__section analysis-panel__section--action">
+        <h4>&#x1F4CB; アクションプラン</h4>
+        <ul>${a.actions.map(ac => `<li>${escapeHtml(ac)}</li>`).join("")}</ul>
+      </div>
+      <div class="analysis-panel__meta">
+        <span class="analysis-badge analysis-badge--difficulty-${diffClass}">難易度: ${escapeHtml(a.estimated_difficulty)}</span>
+        <span class="analysis-badge analysis-badge--days">準備目安: ${a.recommended_preparation_days}日</span>
+      </div>
+    </div>
+  `;
+  panel.classList.remove("hidden");
+}
