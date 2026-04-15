@@ -75,30 +75,41 @@ def parse_json_response(text: str):
         while end > 0 and not lines[end].strip().startswith("```"):
             end -= 1
         text = "\n".join(lines[1:end])
+    text = text.strip()
+
+    # 第一手: そのままパース
     try:
         return json.loads(text)
-    except json.JSONDecodeError as e:
-        # Extra data: JSONの後に余計なテキスト → 有効部分だけ切り出す
-        if "Extra data" in str(e) and e.pos:
+    except json.JSONDecodeError:
+        pass
+
+    # 第二手: raw_decode で先頭の有効な JSON 値だけ取り出す（連結JSON対策の本命）
+    try:
+        obj, _ = json.JSONDecoder().raw_decode(text)
+        return obj
+    except json.JSONDecodeError:
+        pass
+
+    # 第三手: JSON修復（末尾カンマ除去・未閉じ括弧補完など）
+    try:
+        repaired = _repair_json(text)
+        return json.loads(repaired)
+    except json.JSONDecodeError:
+        pass
+
+    # 第四手: テキスト中の最初の [ または { から raw_decode
+    for open_char in ("[", "{"):
+        idx = text.find(open_char)
+        if idx >= 0:
             try:
-                return json.loads(text[:e.pos])
+                obj, _ = json.JSONDecoder().raw_decode(text[idx:])
+                return obj
             except json.JSONDecodeError:
-                pass
-        try:
-            repaired = _repair_json(text)
-            return json.loads(repaired)
-        except json.JSONDecodeError:
-            # 最終手段: テキスト内の最初の [...] or {...} ブロックを抽出
-            match = re.search(r"\[.*\]", text, re.DOTALL)
-            if match:
-                try:
-                    return json.loads(match.group())
-                except json.JSONDecodeError:
-                    pass
-            match = re.search(r"\{.*\}", text, re.DOTALL)
-            if match:
-                return json.loads(match.group())
-            raise
+                continue
+
+    # 全フォールバック失敗: 元の応答を先頭500文字ログに残して再raise
+    logger.error("JSON parse failed. raw response head: %r", text[:500])
+    raise json.JSONDecodeError("parse_json_response: all fallbacks failed", text, 0)
 
 
 def _count_unbalanced(text: str, open_char: str, close_char: str) -> int:

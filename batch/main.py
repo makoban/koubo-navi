@@ -5,6 +5,8 @@ Render.com Cron Job から実行される。
 毎日 JST 02:00（UTC 17:00）にスクレイピング → マッチング → 通知を実行。
 """
 
+BATCH_VERSION = "v3.5.7"
+
 import logging
 import os
 import sys
@@ -25,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    logger.info("公募ナビAI バッチ処理開始")
+    logger.info("公募ナビAI バッチ処理開始 (%s)", BATCH_VERSION)
 
     # 必須環境変数チェック
     if not config.GEMINI_API_KEY:
