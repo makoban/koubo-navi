@@ -53,7 +53,12 @@ def call_gemini(prompt: str, json_mode: bool = True, max_tokens: int = 8192) -> 
             time.sleep(wait)
             continue
 
-        resp.raise_for_status()
+        if not resp.ok:
+            body = (resp.text or "")[:1000]
+            raise requests.HTTPError(
+                f"{resp.status_code} {resp.reason} for {url} | body: {body}",
+                response=resp,
+            )
         data = resp.json()
 
         candidates = data.get("candidates", [])
