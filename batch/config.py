@@ -10,7 +10,13 @@ except ImportError:
 
 # --- Gemini API ---
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
+_configured_gemini_model = os.environ.get("GEMINI_MODEL", "").strip()
+GEMINI_MODEL = (
+    "gemini-2.5-flash"
+    if not _configured_gemini_model
+    or _configured_gemini_model in {"gemini-flash-latest", "gemini-2.0-flash"}
+    else _configured_gemini_model
+)
 GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models"
 
 # --- Supabase ---

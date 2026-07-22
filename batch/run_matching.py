@@ -27,7 +27,13 @@ logger = logging.getLogger(__name__)
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://ypyrjsdotkeyvzequdez.supabase.co")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
+_configured_gemini_model = os.environ.get("GEMINI_MODEL", "").strip()
+GEMINI_MODEL = (
+    "gemini-2.5-flash"
+    if not _configured_gemini_model
+    or _configured_gemini_model in {"gemini-flash-latest", "gemini-2.0-flash"}
+    else _configured_gemini_model
+)
 BATCH_SIZE = 15  # Gemini 1回あたりの案件数
 
 

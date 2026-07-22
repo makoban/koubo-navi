@@ -242,7 +242,7 @@ IT・DX / 建設・土木 / コンサル・調査 / 広告・クリエイティ�
 ウェブサイトテキスト:
 ${pageText}`;
 
-  const geminiUrl = `${GEMINI_API_BASE}/v1beta/models/gemini-2.0-flash:generateContent`;
+  const geminiUrl = `${GEMINI_API_BASE}/v1beta/models/gemini-2.5-flash:generateContent`;
   let geminiResp;
   try {
     geminiResp = await fetch(geminiUrl, {
@@ -765,7 +765,7 @@ match_keywords: この案件に関連する企業キーワードを3〜5個生�
 match_pointsは3〜5個、concernsは2〜3個、actionsは3〜5個生成してください。
 recommended_preparation_daysは準備に必要な日数の目安です。`;
 
-  const geminiUrl = `${GEMINI_API_BASE}/v1beta/models/gemini-2.0-flash:generateContent`;
+  const geminiUrl = `${GEMINI_API_BASE}/v1beta/models/gemini-2.5-flash:generateContent`;
   let geminiResp;
   try {
     geminiResp = await fetch(geminiUrl, {
