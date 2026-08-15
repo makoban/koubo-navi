@@ -1,0 +1,249 @@
+:root {
+  color-scheme: dark;
+  --bg: #070b14;
+  --surface-soft: #151f31;
+  --gold: #d2b276;
+  --gold-soft: rgba(210, 178, 118, 0.16);
+  --text: #f4f0e8;
+  --muted: #b8b2a7;
+  --border: rgba(210, 178, 118, 0.28);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 0;
+  background: var(--bg);
+}
+
+body {
+  min-width: 0;
+  min-height: 100vh;
+  margin: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 50% 18%, rgba(210, 178, 118, 0.1), transparent 34rem),
+    var(--bg);
+  font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  line-height: 1.8;
+}
+
+a {
+  color: inherit;
+}
+
+.site-header {
+  width: min(100% - 32px, 1080px);
+  margin: 0 auto;
+  padding: 22px 0;
+}
+
+.brand {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.brand__mark {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--gold);
+  background: var(--gold-soft);
+  font-family: Georgia, serif;
+  font-weight: 700;
+}
+
+.brand__name {
+  color: var(--gold);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.shutdown {
+  width: min(100% - 32px, 760px);
+  min-width: 0;
+  margin: auto;
+  padding: 40px 0 72px;
+}
+
+.shutdown__card {
+  min-width: 0;
+  padding: clamp(28px, 6vw, 64px);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: linear-gradient(155deg, rgba(21, 31, 49, 0.98), rgba(10, 16, 28, 0.98));
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
+}
+
+.shutdown__status {
+  width: fit-content;
+  margin: 0 0 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--gold);
+  background: var(--gold-soft);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.shutdown__status span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 0 5px rgba(210, 178, 118, 0.12);
+}
+
+.shutdown__service {
+  margin: 0 0 8px;
+  color: var(--gold);
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+h1 {
+  max-width: 18em;
+  margin: 0;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-size: clamp(1.85rem, 6vw, 3.1rem);
+  line-height: 1.38;
+  letter-spacing: 0.02em;
+  line-break: strict;
+  text-wrap: balance;
+}
+
+.phrase {
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.shutdown__lead,
+.shutdown__footnote,
+.shutdown__notice p,
+.shutdown__notice li {
+  line-break: strict;
+  word-break: normal;
+  overflow-wrap: normal;
+  text-wrap: pretty;
+}
+
+.shutdown__lead {
+  margin: 24px 0 0;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.shutdown__notice {
+  margin: 32px 0 0;
+  padding: 22px 24px;
+  border-radius: 14px;
+  background: var(--surface-soft);
+}
+
+.shutdown__notice p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.shutdown__notice ul {
+  margin: 12px 0 0;
+  padding-left: 1.35em;
+}
+
+.shutdown__notice li + li {
+  margin-top: 4px;
+}
+
+.shutdown__footnote {
+  margin: 28px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.home-link {
+  min-height: 48px;
+  margin-top: 28px;
+  padding: 11px 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--gold);
+  background: var(--gold-soft);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.home-link:hover,
+.home-link:focus-visible {
+  border-color: var(--gold);
+  outline: none;
+}
+
+.site-footer {
+  padding: 18px 16px 28px;
+  color: #817b70;
+  text-align: center;
+  font-size: 0.78rem;
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .site-header,
+  .shutdown {
+    width: min(100% - 24px, 760px);
+  }
+
+  .site-header {
+    padding: 16px 0;
+  }
+
+  .shutdown {
+    padding: 22px 0 48px;
+  }
+
+  .shutdown__card {
+    border-radius: 18px;
+    box-shadow: none;
+  }
+
+  .shutdown__notice {
+    padding: 18px;
+  }
+
+  .home-link {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+  }
+}

@@ -2,6 +2,8 @@
 
 行政の公募・入札案件をAIが毎日自動チェックし、ユーザーの事業にマッチする案件を通知するサブスクサービス。
 
+> **運用状態:** 2026年8月16日からサービス停止中。公開面は停止案内のみを表示し、Render Cron・Cloudflare Worker・新規決済導線は停止する。
+
 - **URL**: https://koubo-navi.bantex.jp/
 - **GitHub**: makoban/koubo-navi
 - **バージョン**: v3.1
