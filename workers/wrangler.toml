@@ -1,6 +1,7 @@
 name = "koubo-navi-proxy"
 main = "index.js"
 compatibility_date = "2024-09-25"
+workers_dev = false
 
 # --------------------------------------------------------------------------
 # 公開変数
